@@ -1,0 +1,12 @@
+*doc/
+*data/
+*output/
+*maps/
+
+
+*.xlsx
+*.DS_Store
+*.csv
+*.dct
+Icon.#*
+spatial_weather/*
