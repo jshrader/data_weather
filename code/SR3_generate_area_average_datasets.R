@@ -27,7 +27,8 @@ proj_dir <- paste0(dir,'data/weather/data/schlenker_roberts/')
 
 # Specify the years to process---------------------------------------------
 # This allows you to quickly update the data. Simply specify the next year only.
-years <- as.character(seq(1950,2019))
+#years <- as.character(seq(1950,2019))
+years <- "2010"
 #years <- as.character(c(1950,2009))
 
 ## Prepare for parallel 
@@ -46,7 +47,8 @@ county_fips <- read_dta('linkGridnumberFIPS.dta')
 county_fips <- remove_labels(county_fips)
 
 # Unzip Files -------------------------------------------------------------
-unzip <- 'Yes'
+#unzip <- 'Yes'
+unzip <- 'No'
 if (unzip == 'Yes'){
   directory_list <- character()
   for(y in years){
@@ -133,10 +135,14 @@ dt <- pbmclapply(files, func, mc.cores = num_cores)
 toc()
 
 
-# Append Daily Area Weighted into Unique Dataset ----------------------------------
-app_files <- function(file){
-  load(file) 
-  return(daily)
+# Append Daily Data into Unique Dataset ----------------------------------
+app_files <- function(file, suffix){
+  load(file)
+  if(suffix=="sp"){
+    return(daily)
+  } else {
+    return(daily_wg)
+  }
 }
 for(i in c("area","pop")){
   print(paste0("Saving daily ", i," average."))
@@ -147,12 +153,12 @@ for(i in c("area","pop")){
   }
   folder <- 'daily/'
   setwd(paste0(datadrive_dir,folder))
-  file_list <- list.files(pattern = suffix)[1:20]
+  file_list <- list.files(pattern = suffix)
   tic()
-  schlenker_daily <- rbindlist(mclapply(file_list, FUN=app_files, mc.cores=num_cores))
+  schlenker_daily <- rbindlist(pbmclapply(file_list, FUN=app_files, suffix=suffix, mc.cores=num_cores))
   toc()
   # Bring in previous years
-  if (exists(paste0(proj_dir, 'schlenker_daily_',i,'.dta'))){
+  if (file.exists(paste0(proj_dir, 'schlenker_daily_',i,'.dta'))){
     prev <- as.data.table(read_dta(file = paste0(proj_dir, 'schlenker_daily_',i,'.dta')))
   }
   schlenker_daily[, fips:=as.character(fips)]
@@ -161,8 +167,11 @@ for(i in c("area","pop")){
   #schlenker_daily[, month:=NULL]
   #schlenker_daily[, day:=NULL]
   schlenker_daily[, gridNumber:=NULL]
+  if(suffix == "wg"){
+    schlenker_daily[, popLevel:=NULL]
+  }
   colnames(schlenker_daily) <- c("fips","year","month","day","date",paste0("tmin_sr_",i),paste0("tmax_sr_",i),paste0("prec_sr_",i))
-  if (exists(paste0(proj_dir, 'schlenker_daily_',i,'.dta'))){
+  if (file.exists(paste0(proj_dir, 'schlenker_daily_',i,'.dta'))){
     outfile <- rbind(prev, schlenker_daily)
   } else {
     outfile <- copy(schlenker_daily)
@@ -174,88 +183,53 @@ for(i in c("area","pop")){
   rm(schlenker_daily)
 }
 
-
-# Merge Monthly Simple into Unique Dataset ----------------------------------
-print("Saving monthly area average.")
-folder <- 'monthly/'
-setwd(paste0(datadrive_dir,folder))
-file_list <- list.files(pattern = 'sp')
-for (file in file_list){
-  print(file)
-  # if the merged dataset doesn't exist, create it
-  if (!exists('schlenker_monthly_sp')){
-    load(file)
-    schlenker_monthly_sp <- copy(monthly)
-    rm(monthly)}
-  # if the merged dataset does exist, append to it
-  if (exists('schlenker_monthly_sp')){
-    load(file) 
-    schlenker_monthly_sp <- rbind(schlenker_monthly_sp, monthly)
-    rm(monthly)
-  }
-  file.remove(file)
-}
-if (exists(paste0(proj_dir, 'schlenker_monthly_area.dta'))){
-  prev <- as.data.table(read.dta13(file = paste0(proj_dir, 'schlenker_monthly_area.dta')))
-}
-schlenker_monthly_sp[, fips:=as.character(fips)]
-schlenker_monthly_sp[nchar(fips)<5, fips:=paste0("0",fips)]
-schlenker_monthly_sp[, year:=as.numeric(year)]
-schlenker_monthly_sp[, month:=as.numeric(month)]
-schlenker_monthly_sp[, gridNumber:=NULL]
-schlenker_monthly_sp[, dateNum:=NULL]
-colnames(schlenker_monthly_sp) <- c("fips","year","month","tmin_sr_area","tmax_sr_area","prec_sr_area")
-if (exists(paste0(proj_dir, 'schlenker_monthly_area.dta'))){
-  outfile <- rbind(prev, schlenker_monthly_sp)
-} else {
-  outfile <- copy(schlenker_monthly_sp)
-}
-write_dta(data=outfile, path=paste0(proj_dir,"schlenker_monthly_area.dta"))
-# Take out garbage
-rm(outfile)
-rm(schlenker_monthly_sp)
-rm(prev)
-
-# Merge Monthly Weighted into Unique Dataset ----------------------------------
-print("Saving monthly population average.")
-folder <- 'monthly/'
-setwd(paste0(datadrive_dir,folder))
-file_list <- list.files(pattern = 'wg')
-for (file in file_list){
-  print(file)
-  # if the merged dataset doesn't exist, create it
-  if (!exists('schlenker_monthly_wg')){
-    load(file)
-    schlenker_monthly_wg <- copy(monthly_wg)
-    rm(monthly_wg)}
-  # if the merged dataset does exist, append to it
-  if (exists('schlenker_monthly_wg')){
-    load(file) 
-    schlenker_monthly_wg <- rbind(schlenker_monthly_wg, monthly_wg)
-    rm(monthly_wg)
+# Append Monthly Data into Unique Dataset ----------------------------------
+app_files <- function(file, suffix){
+  load(file)
+  if(suffix=="sp"){
+    return(monthly)
+  } else {
+    return(monthly_wg)
   }
 }
-if (exists(paste0(proj_dir, 'schlenker_monthly_pop.dta'))){
-  prev <- as.data.table(read.dta13(file = paste0(proj_dir, 'schlenker_monthly_pop.dta')))
+for(i in c("area","pop")){
+  print(paste0("Saving monthly ", i," average."))
+  if(i == "area"){
+    suffix <- "sp"
+  } else {
+    suffix <- "wg"
+  }
+  folder <- 'monthly/'
+  setwd(paste0(datadrive_dir,folder))
+  file_list <- list.files(pattern = suffix)
+  tic()
+  schlenker_monthly <- rbindlist(pbmclapply(file_list, FUN=app_files, suffix=suffix, mc.cores=num_cores))
+  toc()
+  # Bring in previous years
+  if (file.exists(paste0(proj_dir, 'schlenker_monthly_',i,'.dta'))){
+    prev <- as.data.table(read_dta(file = paste0(proj_dir, 'schlenker_monthly_',i,'.dta')))
+  }
+  schlenker_monthly[, fips:=as.character(fips)]
+  schlenker_monthly[nchar(fips)<5, fips:=paste0("0",fips)]
+  schlenker_monthly[, year:=as.numeric(year)]
+  schlenker_monthly[, month:=as.numeric(month)]
+  schlenker_monthly[, dateNum:=NULL]
+  schlenker_monthly[, gridNumber:=NULL]
+  if(suffix == "wg"){
+    schlenker_monthly[, popLevel:=NULL]
+  }
+  colnames(schlenker_monthly) <- c("fips","year","month",paste0("tmin_sr_",i),paste0("tmax_sr_",i),paste0("prec_sr_",i))
+  if (file.exists(paste0(proj_dir, 'schlenker_monthly_',i,'.dta'))){
+    outfile <- rbind(prev, schlenker_monthly)
+  } else {
+    outfile <- copy(schlenker_monthly)
+  }
+  outfile <- unique(outfile)
+  write_dta(data=outfile, path=paste0(proj_dir,"schlenker_monthly_",i,".dta"))
+  # Take out garbage
+  rm(outfile)
+  rm(schlenker_monthly)
 }
-schlenker_monthly_wg[, fips:=as.character(fips)]
-schlenker_monthly_wg[nchar(fips)<5, fips:=paste0("0",fips)]
-schlenker_monthly_wg[, year:=as.numeric(year)]
-schlenker_monthly_wg[, month:=as.numeric(month)]
-schlenker_monthly_wg[, gridNumber:=NULL]
-schlenker_monthly_wg[, popLevel:=NULL]
-schlenker_monthly_wg[, dateNum:=NULL]
-colnames(schlenker_monthly_wg) <- c("fips","year","month","tmin_sr_pop","tmax_sr_pop","prec_sr_pop")
-if (exists(paste0(proj_dir, 'schlenker_monthly_pop.dta'))){
-  outfile <- rbind(prev, schlenker_monthly_wg)
-} else {
-  outfile <- copy(schlenker_monthly_wg)
-}
-write_dta(data=outfile, path=paste0(proj_dir,"schlenker_monthly_pop.dta"))
-# Take out garbage
-rm(outfile)
-rm(schlenker_monthly_wg)
-rm(prev)
 
 # Delete unneeded files
 setwd(paste0(datadrive_dir,'daily/'))
