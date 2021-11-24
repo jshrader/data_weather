@@ -1,0 +1,182 @@
+> ptm <- proc.time()
+> packages <- c("sp","rgeos","rgdal","spdep","raster","fields","MBA","data.table","readr")
+> lapply(packages, library, character.only = TRUE)
+Loading required package: methods
+rgeos version: 0.3-19, (SVN revision 524)
+ GEOS runtime version: 3.5.0-CAPI-1.9.0 r4084 
+ Linking to sp version: 1.2-3 
+ Polygon checking: TRUE 
+
+rgdal: version: 1.1-8, (SVN revision 616)
+ Geospatial Data Abstraction Library extensions to R successfully loaded
+ Loaded GDAL runtime: GDAL 1.11.3, released 2015/09/16
+ Path to GDAL shared files: /usr/share/gdal/1.11
+ Loaded PROJ.4 runtime: Rel. 4.9.2, 08 September 2015, [PJ_VERSION: 491]
+ Path to PROJ.4 shared files: (autodetected)
+ Linking to sp version: 1.2-3 
+Loading required package: Matrix
+Loading required package: spam
+Loading required package: grid
+Spam version 1.3-0 (2015-10-24) is loaded.
+Type 'help( Spam)' or 'demo( spam)' for a short introduction 
+and overview of this package.
+Help for individual functions is also obtained by adding the
+suffix '.spam' to the function name, e.g. 'help( chol.spam)'.
+
+Attaching package: ‘spam’
+
+The following objects are masked from ‘package:base’:
+
+    backsolve, forwardsolve
+
+Loading required package: maps
+
+ # maps v3.1: updated 'world': all lakes moved to separate new #
+ # 'lakes' database. Type '?world' or 'news(package="maps")'.  #
+
+
+
+Attaching package: ‘data.table’
+
+The following object is masked from ‘package:raster’:
+
+    shift
+
+[[1]]
+[1] "sp"        "methods"   "stats"     "graphics"  "grDevices" "utils"    
+[7] "datasets"  "base"     
+
+[[2]]
+[1] "rgeos"     "sp"        "methods"   "stats"     "graphics"  "grDevices"
+[7] "utils"     "datasets"  "base"     
+
+[[3]]
+ [1] "rgdal"     "rgeos"     "sp"        "methods"   "stats"     "graphics" 
+ [7] "grDevices" "utils"     "datasets"  "base"     
+
+[[4]]
+ [1] "spdep"     "Matrix"    "rgdal"     "rgeos"     "sp"        "methods"  
+ [7] "stats"     "graphics"  "grDevices" "utils"     "datasets"  "base"     
+
+[[5]]
+ [1] "raster"    "spdep"     "Matrix"    "rgdal"     "rgeos"     "sp"       
+ [7] "methods"   "stats"     "graphics"  "grDevices" "utils"     "datasets" 
+[13] "base"     
+
+[[6]]
+ [1] "fields"    "maps"      "spam"      "grid"      "raster"    "spdep"    
+ [7] "Matrix"    "rgdal"     "rgeos"     "sp"        "methods"   "stats"    
+[13] "graphics"  "grDevices" "utils"     "datasets"  "base"     
+
+[[7]]
+ [1] "MBA"       "fields"    "maps"      "spam"      "grid"      "raster"   
+ [7] "spdep"     "Matrix"    "rgdal"     "rgeos"     "sp"        "methods"  
+[13] "stats"     "graphics"  "grDevices" "utils"     "datasets"  "base"     
+
+[[8]]
+ [1] "data.table" "MBA"        "fields"     "maps"       "spam"      
+ [6] "grid"       "raster"     "spdep"      "Matrix"     "rgdal"     
+[11] "rgeos"      "sp"         "methods"    "stats"      "graphics"  
+[16] "grDevices"  "utils"      "datasets"   "base"      
+
+[[9]]
+ [1] "readr"      "data.table" "MBA"        "fields"     "maps"      
+ [6] "spam"       "grid"       "raster"     "spdep"      "Matrix"    
+[11] "rgdal"      "rgeos"      "sp"         "methods"    "stats"     
+[16] "graphics"   "grDevices"  "utils"      "datasets"   "base"      
+
+> 
+> setwd(data_dir)
+> if(station_list == TRUE){
++     ## Get list of stations
++     file <- "ftp://ftp.ncdc.noaa.gov/pub/data/ghcn/daily/ghcnd-stations.txt"
++     repeat {
++         try(download.file(file, "ghcnd-stations.txt", quiet = FALSE))
++         if (file.info("ghcnd-stations.txt")$size > 0) {
++             break
++         }
++     }
++ 
++     ## IV. FORMAT OF "ghcnd-stations.txt"
++     ## ------------------------------
++     ##     Variable   Columns   Type
++     ## ------------------------------
++     ## ID            1-11   Character
++     ## LATITUDE     13-20   Real
++     ## LONGITUDE    22-30   Real
++     ## ELEVATION    32-37   Real
++     ## STATE        39-40   Character
++     ## NAME         42-71   Character
++     ## GSN FLAG     73-75   Character
++     ## HCN/CRN FLAG 77-79   Character
++     ## WMO ID       81-85   Character
++     ## ------------------------------
++     columns <- fwf_widths(c(11, 9, 10, 7, 3, 31, 4, 4, 6))
++     columns$col_names <- c('id','lat','lon','elev','state','name','gsn_flag','hcn_crn_flag','wmo_id')
++     column_types <- cols(id='c',lat='d',lon='d',elev='d',state='c',name='c',
++                          gsn_flag='c',hcn_crn_flag='c',wmo_id='c')
++ 
++     st <- data.table(read_fwf("ghcnd-stations.txt",col_positions=columns,col_types=column_types))
++     st$cntry <- substr(st$id, 1, 2)
++     ## Keep only the US locations
++     st <- st[cntry=='US']
++     st[, cntry:=NULL]
++     ## Format variables
++     st[elev < -998, elev := NA]
++ 
++     ## Add timezone and county IDs
++     ## Read timezone shapefile
++     tz <- shapefile(paste0(tz_dir,"tz_us.shp"))
++     st <- st[is.na(lat)==FALSE & is.na(lon)==FALSE]
++     dim(st)
++     ## Add timezone
++     sp <- SpatialPoints(cbind(st$lon,st$lat), proj4string=tz@proj4string)
++     spst <- SpatialPointsDataFrame(sp, st)
++     tzid <- over(spst, tz)
++     st <- data.table(cbind(st,tzid))
++     ## Drop locations with missing timezone ID. These are offshore or islands,
++     ## as far as I can tell.
++     dim(st)
++     st <- st[is.na(TZID)==FALSE]
++     dim(st)
++     ## Build lists of stations by county for use when reading the weather files
++     ## Grab county spatial data
++     county <- shapefile(paste0(county_dir,"gz_2010_us_050_00_500k.shp"))
++     sp <- SpatialPoints(cbind(st$lon,st$lat), proj4string=county@proj4string)
++     spst <- SpatialPointsDataFrame(sp, st)
++     county_id <- over(spst, county)
++     st <- data.table(cbind(st,county_id))
++     ## Assess fit quality
++     ##st[is.na(COUNTY)]
++     dim(st)
++     ## Some locations don't have counties. I checked, and the issue is largely
++     ## due to low resolution on the station list. 
++     st <- st[is.na(COUNTY)==FALSE]
++     dim(st)
++     ## Renaming
++     names(st)[c(12,13)] <- c('state_fips','county_fips')
++     names(st) <- tolower(names(st))
++     st$name <- NULL
++     ## geo_id is just fips with a common US prefix
++     st$geo_id <- NULL
++     write_csv(st, "ghcnd_stations_usa_countytz.csv")
++ }
+> 
+> cat("Getting ready to download files.")
+Getting ready to download files.> i <- 1
+> for(y in seq(begin_year,end_year,by=1)){
++     ## Preallocate a file download status matrix
++     outputs <- as.data.table(cbind(matrix("", end_year-begin_year+1, 1),matrix(NA, end_year-begin_year+1, 1)))
++     names(outputs) <- c("file","status")
++     ## Write the wget calls
++     outputs[i, file:=y] 
++     wget <- paste0("wget -P ", external_dir, " ftp://ftp.ncdc.noaa.gov/pub/data/ghcn/daily/by_year/",
++                        y, ".csv.gz")
++     outputs[i, status:=try(system(wget, intern=FALSE, ignore.stderr=TRUE))]
++ }
+There were 24 warnings (use warnings() to see them)
+> saveRDS(outputs, file='ghcn_download_status.rds')
+> ##outputs_full
+> cat("All done. Check the status of downloads in ghcn_download_status.rds.")
+All done. Check the status of downloads in ghcn_download_status.rds.> 
+> 

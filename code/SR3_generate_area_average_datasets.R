@@ -1,7 +1,7 @@
-## R code to calculate average weather in county from PRISM (Schenkler-Roberts) daily files
-## To add a new year to the data, simply change the year list at the beginning (years).
-## This will run the averaging code for the near year and add it to the files from previous
-## years. 
+## R code to calculate average weather in county from PRISM (Schenkler-Roberts)
+## daily files. To add a new year to the data, simply change the year list at
+## the beginning (years). This will run the averaging code for the new year
+## and add it to the files from previous years. 
 ##
 ## Code by Gabriel Gonzalez Sutil and Jeffrey Shrader
 ##
@@ -27,13 +27,10 @@ proj_dir <- paste0(dir,'data/weather/data/schlenker_roberts/')
 
 # Specify the years to process---------------------------------------------
 # This allows you to quickly update the data. Simply specify the next year only.
-#years <- as.character(seq(1950,2019))
-years <- "2010"
-#years <- as.character(c(1950,2009))
+years <- as.character(seq(1950,2019))
 
 ## Prepare for parallel 
 num_cores <- detectCores()-1
-#cl = makeCluster(num_cores, outfile="")
 
 # Import Population -------------------------------------------------------
 pop_dir <- paste0(datadrive_dir)
@@ -47,8 +44,8 @@ county_fips <- read_dta('linkGridnumberFIPS.dta')
 county_fips <- remove_labels(county_fips)
 
 # Unzip Files -------------------------------------------------------------
-#unzip <- 'Yes'
-unzip <- 'No'
+unzip <- 'Yes'
+#unzip <- 'No'
 if (unzip == 'Yes'){
   directory_list <- character()
   for(y in years){
@@ -60,6 +57,7 @@ if (unzip == 'Yes'){
   # Be careful because you also need to supply full target directory names
   files_to_untar <- paste0(datadrive_dir,directory_list)
   to_dir <- paste0(datadrive_dir)
+  cl = makeCluster(num_cores, outfile="")
   parLapply(cl, X=files_to_untar, fun='untar', exdir=to_dir)
 }
 
@@ -177,6 +175,7 @@ for(i in c("area","pop")){
     outfile <- copy(schlenker_daily)
   }
   outfile <- unique(outfile)
+  outfile <- outfile[order(fips, date), ]
   write_dta(data=outfile, path=paste0(proj_dir,"schlenker_daily_",i,".dta"))
   # Take out garbage
   rm(outfile)
@@ -225,6 +224,7 @@ for(i in c("area","pop")){
     outfile <- copy(schlenker_monthly)
   }
   outfile <- unique(outfile)
+  outfile <- outfile[order(fips, year, month), ]
   write_dta(data=outfile, path=paste0(proj_dir,"schlenker_monthly_",i,".dta"))
   # Take out garbage
   rm(outfile)

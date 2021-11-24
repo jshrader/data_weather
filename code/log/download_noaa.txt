@@ -1,0 +1,133 @@
+> ptm <- proc.time()
+> packages <- c("sp","rgeos","rgdal","spdep","fields","MBA","data.table")
+> lapply(packages, library, character.only = TRUE)
+Loading required package: methods
+rgeos version: 0.3-19, (SVN revision 524)
+ GEOS runtime version: 3.5.0-CAPI-1.9.0 r4084 
+ Linking to sp version: 1.2-3 
+ Polygon checking: TRUE 
+
+rgdal: version: 1.1-8, (SVN revision 616)
+ Geospatial Data Abstraction Library extensions to R successfully loaded
+ Loaded GDAL runtime: GDAL 1.11.3, released 2015/09/16
+ Path to GDAL shared files: /usr/share/gdal/1.11
+ Loaded PROJ.4 runtime: Rel. 4.9.2, 08 September 2015, [PJ_VERSION: 491]
+ Path to PROJ.4 shared files: (autodetected)
+ Linking to sp version: 1.2-3 
+Loading required package: Matrix
+Loading required package: spam
+Loading required package: grid
+Spam version 1.3-0 (2015-10-24) is loaded.
+Type 'help( Spam)' or 'demo( spam)' for a short introduction 
+and overview of this package.
+Help for individual functions is also obtained by adding the
+suffix '.spam' to the function name, e.g. 'help( chol.spam)'.
+
+Attaching package: ‘spam’
+
+The following objects are masked from ‘package:base’:
+
+    backsolve, forwardsolve
+
+Loading required package: maps
+
+ # maps v3.1: updated 'world': all lakes moved to separate new #
+ # 'lakes' database. Type '?world' or 'news(package="maps")'.  #
+
+
+[[1]]
+[1] "sp"        "methods"   "stats"     "graphics"  "grDevices" "utils"    
+[7] "datasets"  "base"     
+
+[[2]]
+[1] "rgeos"     "sp"        "methods"   "stats"     "graphics"  "grDevices"
+[7] "utils"     "datasets"  "base"     
+
+[[3]]
+ [1] "rgdal"     "rgeos"     "sp"        "methods"   "stats"     "graphics" 
+ [7] "grDevices" "utils"     "datasets"  "base"     
+
+[[4]]
+ [1] "spdep"     "Matrix"    "rgdal"     "rgeos"     "sp"        "methods"  
+ [7] "stats"     "graphics"  "grDevices" "utils"     "datasets"  "base"     
+
+[[5]]
+ [1] "fields"    "maps"      "spam"      "grid"      "spdep"     "Matrix"   
+ [7] "rgdal"     "rgeos"     "sp"        "methods"   "stats"     "graphics" 
+[13] "grDevices" "utils"     "datasets"  "base"     
+
+[[6]]
+ [1] "MBA"       "fields"    "maps"      "spam"      "grid"      "spdep"    
+ [7] "Matrix"    "rgdal"     "rgeos"     "sp"        "methods"   "stats"    
+[13] "graphics"  "grDevices" "utils"     "datasets"  "base"     
+
+[[7]]
+ [1] "data.table" "MBA"        "fields"     "maps"       "spam"      
+ [6] "grid"       "spdep"      "Matrix"     "rgdal"      "rgeos"     
+[11] "sp"         "methods"    "stats"      "graphics"   "grDevices" 
+[16] "utils"      "datasets"   "base"      
+
+> 
+> setwd("~/Dropbox/research/data/weather/data/isd")
+> 
+> ## Get list of stations
+> file <- "ftp://ftp.ncdc.noaa.gov/pub/data/noaa/isd-history.csv"
+> repeat {
++     try(download.file(file, "isd-history.csv",
++                       quiet = TRUE))
++     if (file.info("isd-history.csv")$size > 0) {
++         break
++     }
++ }
+> 
+> st <- data.table(read.csv("isd-history.csv"))
+> ## Clean up stations
+> names(st)[c(3, 9)] <- c('NAME','ELEV')
+> ## Keep just the US
+> st <- st[CTRY=='US']
+> ## Format variables
+> st[ELEV < -900, ELEV := NA]
+> ## Month and day information is irrelevant for downloading files since NOAA
+> ## stores them annually
+> st[, BEGIN := as.numeric(substr(BEGIN, 1, 4))]
+> st[, END := as.numeric(substr(END, 1, 4))]
+> ## This is still missing a few state records. Visual inspection shows that many
+> ## of them are bouy or coast guard stations. Some seem to be land-based records
+> ## that have simply been miscoded, but I will exclude all of them to cut down
+> ## on processing time.
+> st <- st[STATE!='']
+> 
+> ## Get the weather data for each station
+> ## I will be building a dataset for each year, since that is the temportal
+> ## resolution of NOAA's decision to include a station in a file or not.
+> setkey(st,STATE,BEGIN,END)
+> 
+> cat("Getting ready to download files.")
+Getting ready to download files.> for(y in seq(begin_year,end_year,by=1)){
++     ## Get a list of all stations to query this year
++     station_list <- st[BEGIN <= y & END >= y]
++     ## Preallocate a file download status matrix
++     outputs <- as.data.table(cbind(matrix("", dim(station_list)[1], 1),matrix(99, dim(station_list)[1], 1)))
++     names(outputs) <- c("file","status")
++     for(s in 1:dim(station_list)[1]){
++         ## Write the wget calls
++         outputs[s, file:=paste(sprintf("%06d", station_list[s]$USAF), "-", sprintf("%05d", station_list[s]$WBAN), "-", y, ".gz", sep="")] 
++         wget <- paste0("wget -P isd_external  ftp://ftp.ncdc.noaa.gov/pub/data/noaa/",
++                        y, "/", outputs[s]$file)
++         outputs[s, status:=try(system(wget, intern=FALSE, ignore.stderr=TRUE))]
++     }
++     outputs$year <- y
++     if(y == begin_year){
++         outputs_full <- outputs
++     } else {
++         outputs_full <- rbind(outputs, outputs_full)
++     }
++     print(y)
++ }
+[1] 2003
+There were 50 or more warnings (use warnings() to see the first 50)
+> saveRDS(outputs_full, file='isd_download_status.rds')
+> ##outputs_full
+> cat("All done. Check the status of downloads in isd_download_status.rds.")
+All done. Check the status of downloads in isd_download_status.rds.> 
+> 

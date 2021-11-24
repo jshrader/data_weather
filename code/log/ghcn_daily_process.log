@@ -1,0 +1,217 @@
+> ptm_total <- proc.time()
+> packages <- c("sp","rgeos","stringr","rgdal","raster","foreign","data.table","readr","iotools")
+> lapply(packages, library, character.only = TRUE)
+Loading required package: methods
+rgeos version: 0.3-19, (SVN revision 524)
+ GEOS runtime version: 3.5.0-CAPI-1.9.0 r4084 
+ Linking to sp version: 1.2-3 
+ Polygon checking: TRUE 
+
+rgdal: version: 1.1-8, (SVN revision 616)
+ Geospatial Data Abstraction Library extensions to R successfully loaded
+ Loaded GDAL runtime: GDAL 1.11.3, released 2015/09/16
+ Path to GDAL shared files: /usr/share/gdal/1.11
+ Loaded PROJ.4 runtime: Rel. 4.9.2, 08 September 2015, [PJ_VERSION: 491]
+ Path to PROJ.4 shared files: (autodetected)
+ Linking to sp version: 1.2-3 
+
+Attaching package: ‘data.table’
+
+The following object is masked from ‘package:raster’:
+
+    shift
+
+[[1]]
+[1] "sp"        "methods"   "stats"     "graphics"  "grDevices" "utils"    
+[7] "datasets"  "base"     
+
+[[2]]
+[1] "rgeos"     "sp"        "methods"   "stats"     "graphics"  "grDevices"
+[7] "utils"     "datasets"  "base"     
+
+[[3]]
+ [1] "stringr"   "rgeos"     "sp"        "methods"   "stats"     "graphics" 
+ [7] "grDevices" "utils"     "datasets"  "base"     
+
+[[4]]
+ [1] "rgdal"     "stringr"   "rgeos"     "sp"        "methods"   "stats"    
+ [7] "graphics"  "grDevices" "utils"     "datasets"  "base"     
+
+[[5]]
+ [1] "raster"    "rgdal"     "stringr"   "rgeos"     "sp"        "methods"  
+ [7] "stats"     "graphics"  "grDevices" "utils"     "datasets"  "base"     
+
+[[6]]
+ [1] "foreign"   "raster"    "rgdal"     "stringr"   "rgeos"     "sp"       
+ [7] "methods"   "stats"     "graphics"  "grDevices" "utils"     "datasets" 
+[13] "base"     
+
+[[7]]
+ [1] "data.table" "foreign"    "raster"     "rgdal"      "stringr"   
+ [6] "rgeos"      "sp"         "methods"    "stats"      "graphics"  
+[11] "grDevices"  "utils"      "datasets"   "base"      
+
+[[8]]
+ [1] "readr"      "data.table" "foreign"    "raster"     "rgdal"     
+ [6] "stringr"    "rgeos"      "sp"         "methods"    "stats"     
+[11] "graphics"   "grDevices"  "utils"      "datasets"   "base"      
+
+[[9]]
+ [1] "iotools"    "readr"      "data.table" "foreign"    "raster"    
+ [6] "rgdal"      "stringr"    "rgeos"      "sp"         "methods"   
+[11] "stats"      "graphics"   "grDevices"  "utils"      "datasets"  
+[16] "base"      
+
+> 
+> ## Debug switch
+> debug <- FALSE
+> 
+> ## Directories
+> external_dir <- "/media/jgs/datadrive/data/weather/ghcn/daily/"
+> data_dir <- "~/Dropbox/research/data/weather/data/ghcn/"
+> ##data_dir <- "C:/Users/jgs/Dropbox/research/data/weather/data/ghcn/"
+> map_dir <- paste0('~/Dropbox/research/data/maps/usa/')
+> ##map_dir <- paste0('C:/Users/jgs/Dropbox/research/data/maps/usa/')
+> county_dir <- paste0(map_dir,'county/gz_2010_us_050_00_500k/')
+> tz_dir <- paste0(map_dir,'time_zone/tz_us/')
+> 
+> setwd(paste0(data_dir,"daily"))
+> ## Read the station data prepared by download_ghcn.R
+> st <- data.table(read_csv(paste0(data_dir,"ghcnd_stations_usa_countytz.csv")))
+> st <- st[lat > 21 & lat < 53 & lon < -61 & lon > -127]
+> setkey(st,id)
+> st[, gsn_flag:=NULL]
+> st[, hcn_crn_flag:=NULL]
+> st[, wmo_id:=NULL]
+> st[, name:=NULL]
+> st[, lsad:=NULL]
+> st[, censusarea:=NULL]
+> 
+> ## unzip the relevant files
+> file <- seq(begin_year,end_year,by=1)
+> if(debug == TRUE){
++     file <- "test"
++ }
+> setwd(external_dir)
+> getwd()
+[1] "/media/jgs/datadrive/data/weather/ghcn/daily"
+> ## Here, pattern can be a regular expression. In full version, make files equal
+> ## the locations based on stations in each state
+> ##files <- list.files(path=".", pattern=file)
+> for(i in 1:length(file)){
++     ptm_files <- proc.time()
++     cat(paste("Starting ",file[i],"\n"))
++     system(paste0("gunzip ",file[i],".csv.gz"), intern = FALSE, ignore.stderr = FALSE)
++     data <- data.table(read.csv.raw(paste0(file[i],".csv"),header=FALSE,colClasses=c('character','character','character','numeric','character','character','character','integer')))
++ 
++     ## I want to keep prcp, tmax, tmin, tavg, snow
++     names(data) <- c('id','date','element','value','mflag','qflag','sflag','obs_time')
++     setkey(data,element)
++     data <- data[c('PRCP','TMAX','TMIN','TAVG','SNOW')]
++     ## Drop observations that have quality flags
++     data <- data[qflag=='']
++     data[,qflag:=NULL]
++     data[,sflag:=NULL]
++     data[element %in% c('TMAX','TMIN','TAVG'),value:=value/10]
++     setkey(data,id)
++     data_full <- merge(data,st,by='id')
++     rm(data)
++     data_out <- data_full[,.(mean(value,na.rm=TRUE), sum(is.na(value)==FALSE)),by="date,element,state_fips,county_fips"]
++     names(data_out)[c(5,6)] <- c('value','num_obs')
++     ##saveRDS(data_out, file=paste0(file[i],"_county.rds"))
++     write.dta(data_out, file=paste0(file[i],"_county.dta"))
++ 
++     data_out <- data_full[is.na(cbsafp)==FALSE,.(mean(value,na.rm=TRUE), sum(is.na(value)==FALSE)),by="date,element,cbsafp"]
++     names(data_out)[c(4,5)] <- c('value','num_obs')
++     ##saveRDS(data_out, file=paste0(file[i],"_county.rds"))
++     write.dta(data_out, file=paste0(file[i],"_cbsa.dta"))
++ 
++     data_out <- data_full[,.(mean(value,na.rm=TRUE), sum(is.na(value)==FALSE)),by="date,element,state_fips"]
++     names(data_out)[c(4,5)] <- c('value','num_obs')
++     ##saveRDS(data_out, file=paste0(file[i],"_county.rds"))
++     write.dta(data_out, file=paste0(file[i],"_state.dta"))
++     rm(data_full)
++     ##write.csv(data, file = file[i],  ".csv", sep = ""), row.names = FALSE)
++     system(paste0("gzip ",file[i],".csv"), intern = FALSE, ignore.stderr = TRUE)
++     cat(paste0('File took ',round((proc.time() - ptm_files)[3],3),' seconds.\n'))
++ }
+Starting  2004 
+gzip: 2004.csv.gz: No such file or directory
+File took 88.27 seconds.
+Starting  2005 
+File took 92.735 seconds.
+Starting  2006 
+File took 92.298 seconds.
+Starting  2007 
+File took 95.49 seconds.
+Starting  2008 
+File took 102.661 seconds.
+Starting  2009 
+File took 103.968 seconds.
+Starting  2010 
+File took 102.695 seconds.
+Starting  2011 
+File took 99.556 seconds.
+Starting  2012 
+File took 97.631 seconds.
+Starting  2013 
+File took 104.172 seconds.
+Starting  2014 
+File took 98.164 seconds.
+Starting  2015 
+File took 100.092 seconds.
+> 
+> 
+> cat(paste0('All code took ',round((proc.time() - ptm_total)[3],1),' seconds.'))
+All code took 1179.5 seconds.> 
+> if(debug==TRUE){
++     ## http://www.kevjohnson.org/making-maps-in-r/
++     ## Check that output makes sense
++     library('maps')
++     library('RColorBrewer')
++     library('maptools')
++     library('ggmap')
++ 
++     county <- shapefile(paste0(county_dir,"gz_2010_us_050_00_500k.shp"))
++     county <- crop(county, extent(-127, -61, 21, 53))
++     county <- fortify(county, region="GEO_ID")
++ 
++     weather <- data.table(readRDS(paste0(external_dir,"2014_county.rds")))
++     weather$id <- paste0('0500000US',weather$state_fips,weather$county_fips)
++ 
++     ## Check how many counties got weather observations
++     county <- as.data.table(county)
++     county_list <- county[,.(id)]
++     county_list <- unique(county_list)
++     weather_list <- unique(weather[,.(id,state_fips,county_fips)])
++     hasstation <- merge(county_list, weather_list, by="id", all.x=TRUE)
++     sum(is.na(hasstation$state_fips))
++ 
++     setkey(weather,element)
++     weather_tmin <- weather['TMAX']
++     weather1 <- weather_tmin[,.(mean(value,na.rm=TRUE)),by=id]
++     ##weather1 <- weather_tmin[date=='20040102',.(id,value)]
++     names(weather1)[2] <- 'value'
++     plotData <- merge(county, weather1, by="id")
++     plotData$vc <- cut(plotData$value, quantile(plotData$value, probs=c(0,.20,.4,.60,.8,1 )))
++ 
++     ggplot() +
++         geom_polygon(data = plotData, aes(x=long, y=lat, group=group,fill=vc),
++                      color = "white", size = 0.15) +
++         scale_fill_brewer(palette = "Greens") + 
++         coord_map() + theme_nothing(legend=TRUE)
++ 
++     ## Time series of weather in a given location
++     weather$date1 <- as.POSIXct(paste0(substr(weather$date,1,4),"-",substr(weather$date,5,6),"-",substr(weather$date,7,8)))
++     plot(x=weather[fips=='08069',date1],y=weather[fips=='08069',value])
++ 
++     ## Look at station locations
++     st <- st[lat > 21 & lat < 53 & lon < -61 & lon > -127]
++     st$fips <- paste0(st$state_fips,st$county_fips)
++     sp <- SpatialPoints(cbind(st$lon,st$lat), proj4string=county@proj4string)
++     spst <- SpatialPointsDataFrame(sp, st)
++     map(county, lty = 1)
++     plot(spst,add=TRUE, pch='.')
++ 
++ }
+> 

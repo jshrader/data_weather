@@ -1,38 +1,28 @@
-## R code to find average weather from stations inside different spatial boundaries
+## R code to determine how many missing values there are in each station.
 ##
 ## Jeff Shrader
-## First: 2016-7-15
-## Latest: Time-stamp: "2021-11-24 13:07:08 jgs"
+## First: 2021-11-24
+## Latest: Time-stamp: "2021-11-24 13:48:00 jgs"
 ##
-## Citation
-## The journal article describing GHCN-Daily is:
-## Menne, M.J., I. Durre, R.S. Vose, B.E. Gleason, and T.G. Houston, 2012:  An overview
-## of the Global Historical Climatology Network-Daily Database.  Journal of Atmospheric
-## and Oceanic Technology, 29, 897-910, doi:10.1175/JTECH-D-11-00103.1.
+## This borrows heavily from GHCN2_daily_process.R
+rm(list = ls())
+## Switches
+debug <- FALSE
+rebuild <- TRUE
 
-## To acknowledge the specific version of the dataset used, please cite:
-## Menne, M.J., I. Durre, B. Korzeniewski, S. McNeal, K. Thomas, X. Yin, S. Anthony, R. Ray,
-## R.S. Vose, B.E.Gleason, and T.G. Houston, 2012: Global Historical Climatology Network -
-## NOAA National Climatic Data Center. http://doi.org/10.7289/V5D21VHZ [access date].
+## Set the year range you want to process
+begin_year <- 2000
+end_year <- 2020
 
 ## Preliminaries
-rm(list = ls())
-begin_year <- 1950
-end_year <- 2020
 options(echo=TRUE)
 ptm_total <- proc.time()
-packages <- c("sp","rgeos","stringr","rgdal","raster","haven","data.table","readr","iotools","phylin","plm","lubridate","geosphere","collapse","tictoc","parallel","pbmcapply")
+packages <- c("sp","rgeos","stringr","rgdal","raster","haven","data.table",
+  "readr","iotools","phylin","plm","lubridate","geosphere","collapse",
+  "tictoc","parallel","pbmcapply")
 new_packages <- packages[!(packages %in% installed.packages()[,"Package"])]
 if(length(new_packages)) install.packages(new_packages)
 invisible(lapply(packages, library, character.only = TRUE))
-# Lag function for use with data.table
-lg <- function(x)c(NA, x[1:(length(x)-1)])
-
-## Debug switch
-debug <- FALSE
-## If you want to rebuild the whole dataset from scratch, set to true
-rebuild <- FALSE
-
 ## Directories
 external_dir <- "/media/jgs/datadrive/data/weather/ghcn/daily/"
 data_dir <- "~/Dropbox/research/data/weather/data/ghcn/"
@@ -42,58 +32,28 @@ map_dir <- paste0('~/Dropbox/research/data/maps/usa/')
 county_dir <- paste0(map_dir,'county/gz_2010_us_050_00_500k/')
 tz_dir <- paste0(map_dir,'time_zone/tz_us/')
 
-setwd(paste0(data_dir))
-## Read the station data prepared by download_ghcn.R
-st <- fread(paste0(data_dir,"ghcnd_stations_usa_countytz.csv"))
+# Read the station data prepared by download_ghcn.R
+st <- fread(paste0(data_dir,"ghcnd_stations_usa_countytz.csv"),
+  colClasses=list(character=c("id","state","tzid","state_fips","county_fips","csafp","cbsafp"),
+    numeric=c("lat","lon","elev","county_centroid_lon","county_centroid_lat","dist_to_centroid")))
 st <- st[lat > 21 & lat < 53 & lon < -61 & lon > -127]
 setkey(st,id)
-st[, gsn_flag:=NULL]
-st[, hcn_crn_flag:=NULL]
-st[, wmo_id:=NULL]
-st[, name:=NULL]
-st[, lsad:=NULL]
-st[, censusarea:=NULL]
-# Get the county centroid list
-county <- shapefile(paste0(county_dir,"gz_2010_us_050_00_500k.shp"))
-county <- subset(county, !(STATE %in% c("15", "60", "66", "69", "72", "78", "02")))
-# Keep just the continental US
-centroid <- as.data.frame(gCentroid(county, byid=TRUE))
-names(centroid) <- c("c_lon","c_lat")
-centroid_with_id <- as.data.table(cbind(county@data[, "GEO_ID"],centroid))
-names(centroid_with_id)[1] <- "geo_id"
-centroid_with_id[, index:=1:.N]
-centroid <- as.matrix(centroid)
-# county dataset
-counties <- as.data.table(county@data[, c(1,2,3)])
-names(counties) <- tolower(names(counties))
-names(counties)[c(2,3)] <- c("state_fips", "county_fips")
+st[, c("gsn_flag","hcn_crn_flag","wmo_id","name","lsad","censusarea"):=NULL]
 
 ## unzip the relevant files
 files <- seq(begin_year,end_year,by=1)
-if(debug == TRUE){
-    file <- "test"
-}
 ## For a more nuanced list of files (if you have already run some years)
 if(rebuild == FALSE){
-  already_run <-  as.numeric(substr(list.files(path=external_dir, pattern="_idw_daily.dta"), start=1, stop=4))
+  already_run <-  as.numeric(substr(list.files(path=paste0(external_dir, "station_missing/"), pattern=".rds"), start=1, stop=4))
   files <- files[which(!files %in% already_run)]
 }
-setwd(paste0(external_dir,"raw/"))
+setwd(paste0(external_dir,"station_missing/"))
 getwd()
-## Here, pattern can be a regular expression. In full version, make files equal
-## the locations based on stations in each state
-##files <- list.files(path=".", pattern=file)
-#for(i in 1:length(files)){
-#    file <- files
-    # Parellel version
+## For each year, find the missing values from all stations, recoding county location
 func <- function(i, file=files){
     cat(paste("Starting ",file[i],"\n"))
     system(paste0("gunzip ",external_dir,"raw/",file[i],".csv.gz"), intern = FALSE, ignore.stderr = FALSE)
-    # Previous version used read.csv.raw, but fread is faster. Maintaining legacy code in case something
-    # breaks. identical() said the reads are the same.
-    #data <- data.table(read.csv.raw(paste0(file[i],".csv"),header=FALSE,colClasses=c('character','character','character','numeric','character','character','character','integer')))
     data <- fread(paste0(file[i],".csv"),header=FALSE,colClasses=c('character','character','character','numeric','character','character','character','integer'))
-
     ## I want to keep prcp, tmax, tmin, tavg, snow
     # Other variables are included but are uncommon. Humidity and dew point are not
     # included in the file for some reason.
@@ -312,54 +272,3 @@ tic()
 i <- 1:length(files)
 dt <- pbmclapply(i, func, mc.cores = 4)
 toc()
-
-if(debug==TRUE){
-    ## http://www.kevjohnson.org/making-maps-in-r/
-    ## Check that output makes sense
-    library('maps')
-    library('RColorBrewer')
-    library('maptools')
-    library('ggmap')
-
-    county <- shapefile(paste0(county_dir,"gz_2010_us_050_00_500k.shp"))
-    county <- crop(county, extent(-127, -61, 21, 53))
-    county <- fortify(county, region="GEO_ID")
-
-    weather <- data.table(readRDS(paste0(external_dir,"2014_county.rds")))
-    weather$id <- paste0('0500000US',weather$state_fips,weather$county_fips)
-
-    ## Check how many counties got weather observations
-    county <- as.data.table(county)
-    county_list <- county[,.(id)]
-    county_list <- unique(county_list)
-    weather_list <- unique(weather[,.(id,state_fips,county_fips)])
-    hasstation <- merge(county_list, weather_list, by="id", all.x=TRUE)
-    sum(is.na(hasstation$state_fips))
-
-    setkey(weather,element)
-    weather_tmin <- weather['TMAX']
-    weather1 <- weather_tmin[,.(mean(value,na.rm=TRUE)),by=id]
-    ##weather1 <- weather_tmin[date=='20040102',.(id,value)]
-    names(weather1)[2] <- 'value'
-    plotData <- merge(county, weather1, by="id")
-    plotData$vc <- cut(plotData$value, quantile(plotData$value, probs=c(0,.20,.4,.60,.8,1 )))
-
-    ggplot() +
-        geom_polygon(data = plotData, aes(x=long, y=lat, group=group,fill=vc),
-                     color = "white", size = 0.15) +
-        scale_fill_brewer(palette = "Greens") + 
-        coord_map() + theme_nothing(legend=TRUE)
-
-    ## Time series of weather in a given location
-    weather$date1 <- as.POSIXct(paste0(substr(weather$date,1,4),"-",substr(weather$date,5,6),"-",substr(weather$date,7,8)))
-    plot(x=weather[fips=='08069',date1],y=weather[fips=='08069',value])
-
-    ## Look at station locations
-    st <- st[lat > 21 & lat < 53 & lon < -61 & lon > -127]
-    st$fips <- paste0(st$state_fips,st$county_fips)
-    sp <- SpatialPoints(cbind(st$lon,st$lat), proj4string=county@proj4string)
-    spst <- SpatialPointsDataFrame(sp, st)
-    map(county, lty = 1)
-    plot(spst,add=TRUE, pch='.')
-
-}

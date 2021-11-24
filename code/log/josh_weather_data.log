@@ -1,0 +1,3027 @@
+------------------------------------------------------------------------------------
+      name:  <unnamed>
+       log:  /Users/jgs/Dropbox/research/data/weather/bin/josh_weather_data.log
+  log type:  text
+ opened on:   9 Aug 2015, 16:09:45
+
+. 
+. * This is kludgey, but I need a datelist. This should be generated from dir
+. local datelist "201403 201404 201405 201406 201407 201408 201409 201410 201411 201
+> 412 201501 201502 201503 201504 201505 201506"
+
+. 
+. * We can add some code eventually to download the files directly.
+. * Just modify this code:
+. if `download’ == 1 {
+`download’ invalid name
+r(198);
+
+end of do-file
+
+r(198);
+
+. do ~/Dropbox/research/data/weather/bin/josh_data.do
+
+. * Stata program to collapse and combine daily weather data for the US
+. *
+. * Jeff Shrader
+. * First: 2015/07/21
+. * Time-stamp: <2015-08-09 16:09:59 jgs>
+. 
+. * Preliminaries
+. local dir "~/Dropbox/research/data/weather"
+
+. local data_ext "/Volumes/Data 2TB/data/weather"
+
+. cd "`data_ext'"
+/Volumes/Data 2TB/data/weather
+
+. local download 0
+
+. capture log close
+------------------------------------------------------------------------------------
+      name:  <unnamed>
+       log:  /Users/jgs/Dropbox/research/data/weather/bin/josh_weather_data.log
+  log type:  text
+ opened on:   9 Aug 2015, 16:10:22
+
+. 
+. * This is kludgey, but I need a datelist. This should be generated from dir
+. local datelist "201403 201404 201405 201406 201407 201408 201409 201410 201411 201
+> 412 201501 201502 201503 201504 201505 201506"
+
+. 
+. * We can add some code eventually to download the files directly.
+. * Just modify this code:
+. if `download’ == 1 {
+`download’ invalid name
+r(198);
+
+end of do-file
+
+r(198);
+
+. do ~/Dropbox/research/data/weather/bin/josh_data.do
+
+. * Stata program to collapse and combine daily weather data for the US
+. *
+. * Jeff Shrader
+. * First: 2015/07/21
+. * Time-stamp: <2015-08-09 16:10:34 jgs>
+. 
+. * Preliminaries
+. local dir "~/Dropbox/research/data/weather"
+
+. local data_ext "/Volumes/Data 2TB/data/weather"
+
+. cd "`data_ext'"
+/Volumes/Data 2TB/data/weather
+
+. local download 0
+
+. capture log close
+------------------------------------------------------------------------------------
+      name:  <unnamed>
+       log:  /Users/jgs/Dropbox/research/data/weather/bin/josh_weather_data.log
+  log type:  text
+ opened on:   9 Aug 2015, 16:10:37
+
+. 
+. * This is kludgey, but I need a datelist. This should be generated from dir
+. local datelist "201403 201404 201405 201406 201407 201408 201409 201410 201411 201
+> 412 201501 201502 201503 201504 201505 201506"
+
+. 
+. * We can add some code eventually to download the files directly.
+. * Just modify this code:
+. if "`download’" == 1 {
+type mismatch
+r(109);
+
+end of do-file
+
+r(109);
+
+. do ~/Dropbox/research/data/weather/bin/josh_data.do
+
+. * Stata program to collapse and combine daily weather data for the US
+. *
+. * Jeff Shrader
+. * First: 2015/07/21
+. * Time-stamp: <2015-08-09 16:10:56 jgs>
+. 
+. * Preliminaries
+. local dir "~/Dropbox/research/data/weather"
+
+. local data_ext "/Volumes/Data 2TB/data/weather"
+
+. cd "`data_ext'"
+/Volumes/Data 2TB/data/weather
+
+. local download 0
+
+. capture log close
+------------------------------------------------------------------------------------
+      name:  <unnamed>
+       log:  /Users/jgs/Dropbox/research/data/weather/bin/josh_weather_data.log
+  log type:  text
+ opened on:   9 Aug 2015, 16:10:58
+
+. 
+. * This is kludgey, but I need a datelist. This should be generated from dir
+. local datelist "201403 201404 201405 201406 201407 201408 201409 201410 201411 201
+> 412 201501 201502 201503 201504 201505 201506"
+
+. 
+. * We can add some code eventually to download the files directly.
+. * Just modify this code:
+. if "`download’" == "1" {
+.    cd "`dir'/data/raw"
+.    foreach i of local pollutants  {
+  2.       foreach t of local years {
+  3.          shell /usr/local/bin/wget -Odaily_`i'_`t'.zip "http://aqsdr1.epa.gov/a
+> qsweb/aqstmp/airdata/daily_`i'_`t'.zip"
+  4.       }
+  5.    }
+. }
+
+. 
+. * Unpack the data, collapse the hourly, and combine with the daily
+. * Unzip
+. /*
+> local filelist: dir . files "QCLCD*.zip"
+> foreach i of local filelist {
+>    di "`i'"
+>    * shell gzip -d `i'
+>    shell unzip `i'
+>    * unzipfile `i'
+> }
+> */
+. * Iterate through, grabbing humidity and cloud cover from hourly
+. foreach i of local datelist {
+  2.    di "`i'"
+  3.    import delimited using "QCLCD`i'/`i'hourly.txt", clear
+  4.    keep wban date time stationtype drybulbcelsius hourlyprecip skycondition vis
+> ibility relativehumidity
+  5.    destring drybulbcelsius, replace ignore("M")
+  6.    replace hourlyprecip = strtrim(hourlyprecip)
+  7.    replace hourlyprecip = "0.001" if hourlyprecip == "T"
+  8.    destring hourlyprecip, replace ignore("M")
+  9.    destring relativehumidity, replace ignore("M")
+ 10.    gen clear = (substr(skycondition,1,3) == "CLR" | substr(skycondition,1,2) ==
+>  "VV" | substr(skycondition,1,3) == "FEW")
+ 11.    replace clear = . if skycondition == "M"
+ 12.    gen clouds = 1 - clear
+ 13.    * Destring visibility as alternative to clouds
+.    destring visibility, replace ignore("M")
+ 14.    * There are repeat observations for reasons that aren't totally clear
+.    duplicates drop
+ 15.    bysort wban date time: gen count = _N
+ 16.    tab count
+ 17.    tostring date, replace
+ 18.    gen date1 = date(date, "YMD")
+ 19.    format date1 %d
+ 20.    drop date
+ 21.    rename date1 date
+ 22. 
+.    export delimited using "`i'hourly_proc.csv", replace
+ 23. }
+201403
+(44 vars, 4224185 obs)
+drybulbcelsius: characters M removed; replaced as double
+(18123 missing values generated)
+(4,111,212 real changes made)
+variable hourlyprecip was str4 now str5
+(78,149 real changes made)
+hourlyprecip has all characters numeric; replaced as double
+(4033063 missing values generated)
+relativehumidity: characters M removed; replaced as byte
+(1874915 missing values generated)
+(1,831,189 real changes made, 1,831,189 to missing)
+(1,831,189 missing values generated)
+visibility: characters M removed; replaced as double
+(1811931 missing values generated)
+
+Duplicates in terms of all variables
+
+(746 observations deleted)
+
+      count |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |  4,221,677       99.96       99.96
+          2 |      1,762        0.04      100.00
+------------+-----------------------------------
+      Total |  4,223,439      100.00
+date was long now str8
+(note: file 201403hourly_proc.csv not found)
+file 201403hourly_proc.csv saved
+201404
+(44 vars, 3999576 obs)
+drybulbcelsius: characters M removed; replaced as double
+(15775 missing values generated)
+(3,860,982 real changes made)
+variable hourlyprecip was str4 now str5
+(61,151 real changes made)
+hourlyprecip has all characters numeric; replaced as double
+(3799831 missing values generated)
+relativehumidity: characters M removed; replaced as byte
+(1726589 missing values generated)
+(1,686,587 real changes made, 1,686,587 to missing)
+(1,686,587 missing values generated)
+visibility: characters M removed; replaced as double
+(1671296 missing values generated)
+
+Duplicates in terms of all variables
+
+(690 observations deleted)
+
+      count |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |  3,997,498       99.97       99.97
+          2 |      1,388        0.03      100.00
+------------+-----------------------------------
+      Total |  3,998,886      100.00
+date was long now str8
+(note: file 201404hourly_proc.csv not found)
+--Break--
+r(1);
+
+end of do-file
+
+--Break--
+r(1);
+
+. do ~/Dropbox/research/data/weather/bin/josh_data.do
+
+. * Stata program to collapse and combine daily weather data for the US
+. *
+. * Jeff Shrader
+. * First: 2015/07/21
+. * Time-stamp: <2015-08-09 16:30:28 jgs>
+. 
+. * Preliminaries
+. local dir "~/Dropbox/research/data/weather"
+
+. local data_ext "/Volumes/Data 2TB/data/weather"
+
+. cd "`data_ext'"
+/Volumes/Data 2TB/data/weather
+
+. local download 0
+
+. capture log close
+------------------------------------------------------------------------------------
+      name:  <unnamed>
+       log:  /Users/jgs/Dropbox/research/data/weather/bin/josh_weather_data.log
+  log type:  text
+ opened on:   9 Aug 2015, 16:30:39
+
+. 
+. * This is kludgey, but I need a datelist. This should be generated from dir
+. local datelist "201403 201404 201405 201406 201407 201408 201409 201410 201411 201
+> 412 201501 201502 201503 201504 201505 201506"
+
+. 
+. * We can add some code eventually to download the files directly.
+. * Just modify this code:
+. if "`download’" == "1" {
+.    cd "`dir'/data/raw"
+.    foreach i of local pollutants  {
+  2.       foreach t of local years {
+  3.          shell /usr/local/bin/wget -Odaily_`i'_`t'.zip "http://aqsdr1.epa.gov/a
+> qsweb/aqstmp/airdata/daily_`i'_`t'.zip"
+  4.       }
+  5.    }
+. }
+
+. 
+. * Unpack the data, collapse the hourly, and combine with the daily
+. * Unzip
+. /*
+> local filelist: dir . files "QCLCD*.zip"
+> foreach i of local filelist {
+>    di "`i'"
+>    * shell gzip -d `i'
+>    shell unzip `i'
+>    * unzipfile `i'
+> }
+> */
+. * Iterate through, grabbing humidity and cloud cover from hourly
+. foreach i of local datelist {
+  2.    di "`i'"
+  3.    import delimited using "QCLCD`i'/`i'hourly.txt", clear
+  4.    keep wban date time stationtype drybulbcelsius hourlyprecip skycondition vis
+> ibility relativehumidity
+  5.    destring drybulbcelsius, replace ignore("M")
+  6.    replace hourlyprecip = strtrim(hourlyprecip)
+  7.    replace hourlyprecip = "0.001" if hourlyprecip == "T"
+  8.    destring hourlyprecip, replace ignore("M")
+  9.    destring relativehumidity, replace ignore("M")
+ 10.    gen clear = (substr(skycondition,1,3) == "CLR" | substr(skycondition,1,2) ==
+>  "VV" | substr(skycondition,1,3) == "FEW")
+ 11.    replace clear = . if skycondition == "M"
+ 12.    gen clouds = 1 - clear
+ 13.    * Destring visibility as alternative to clouds
+.    destring visibility, replace ignore("M")
+ 14.    * There are repeat observations for reasons that aren't totally clear
+.    duplicates drop
+ 15.    bysort wban date time: gen count = _N
+ 16.    tab count
+ 17.    tostring date, replace
+ 18.    gen date1 = date(date, "YMD")
+ 19.    format date1 %d
+ 20.    drop date
+ 21.    rename date1 date
+ 22.    drop count clear skycondition
+ 23.    rename hourlyprecip precipitation
+ 24.    rename drybulbcelsius temp_celsius
+ 25.    * Collapsing to hourly
+.    gen hour = floor(time)
+ 26.    collapse (mean) temp_celsius precipitation visibility relativehumidity cloud
+> s, by(wban date hour stationtype)
+ 27.    
+.    export delimited using "`i'hourly_proc.csv", replace
+ 28. }
+201403
+(44 vars, 4224185 obs)
+drybulbcelsius: characters M removed; replaced as double
+(18123 missing values generated)
+(4,111,212 real changes made)
+variable hourlyprecip was str4 now str5
+(78,149 real changes made)
+hourlyprecip has all characters numeric; replaced as double
+(4033063 missing values generated)
+relativehumidity: characters M removed; replaced as byte
+(1874915 missing values generated)
+(1,831,189 real changes made, 1,831,189 to missing)
+(1,831,189 missing values generated)
+visibility: characters M removed; replaced as double
+(1811931 missing values generated)
+
+Duplicates in terms of all variables
+
+(746 observations deleted)
+
+      count |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |  4,221,677       99.96       99.96
+          2 |      1,762        0.04      100.00
+------------+-----------------------------------
+      Total |  4,223,439      100.00
+date was long now str8
+file 201403hourly_proc.csv saved
+201404
+--Break--
+r(1);
+
+end of do-file
+
+--Break--
+r(1);
+
+. do ~/Dropbox/research/data/weather/bin/josh_data.do
+
+. * Stata program to collapse and combine daily weather data for the US
+. *
+. * Jeff Shrader
+. * First: 2015/07/21
+. * Time-stamp: <2015-08-09 16:39:27 jgs>
+. 
+. * Preliminaries
+. local dir "~/Dropbox/research/data/weather"
+
+. local data_ext "/Volumes/Data 2TB/data/weather"
+
+. cd "`data_ext'"
+/Volumes/Data 2TB/data/weather
+
+. local download 0
+
+. capture log close
+------------------------------------------------------------------------------------
+      name:  <unnamed>
+       log:  /Users/jgs/Dropbox/research/data/weather/bin/josh_weather_data.log
+  log type:  text
+ opened on:   9 Aug 2015, 16:39:31
+
+. 
+. * This is kludgey, but I need a datelist. This should be generated from dir
+. local datelist "201403 201404 201405 201406 201407 201408 201409 201410 201411 201
+> 412 201501 201502 201503 201504 201505 201506"
+
+. 
+. * We can add some code eventually to download the files directly.
+. * Just modify this code:
+. if "`download’" == "1" {
+.    cd "`dir'/data/raw"
+.    foreach i of local pollutants  {
+  2.       foreach t of local years {
+  3.          shell /usr/local/bin/wget -Odaily_`i'_`t'.zip "http://aqsdr1.epa.gov/a
+> qsweb/aqstmp/airdata/daily_`i'_`t'.zip"
+  4.       }
+  5.    }
+. }
+
+. 
+. * Unpack the data, collapse the hourly, and combine with the daily
+. * Unzip
+. /*
+> local filelist: dir . files "QCLCD*.zip"
+> foreach i of local filelist {
+>    di "`i'"
+>    * shell gzip -d `i'
+>    shell unzip `i'
+>    * unzipfile `i'
+> }
+> */
+. * Iterate through, grabbing humidity and cloud cover from hourly
+. foreach i of local datelist {
+  2.    di "`i'"
+  3.    import delimited using "QCLCD`i'/`i'hourly.txt", clear
+  4.    keep wban date time stationtype drybulbcelsius hourlyprecip skycondition vis
+> ibility relativehumidity
+  5.    destring drybulbcelsius, replace ignore("M")
+  6.    replace hourlyprecip = strtrim(hourlyprecip)
+  7.    replace hourlyprecip = "0.001" if hourlyprecip == "T"
+  8.    destring hourlyprecip, replace ignore("M")
+  9.    destring relativehumidity, replace ignore("M")
+ 10.    gen clear = (substr(skycondition,1,3) == "CLR" | substr(skycondition,1,2) ==
+>  "VV" | substr(skycondition,1,3) == "FEW")
+ 11.    replace clear = . if skycondition == "M"
+ 12.    gen clouds = 1 - clear
+ 13.    * Destring visibility as alternative to clouds
+.    destring visibility, replace ignore("M")
+ 14.    * There are repeat observations for reasons that aren't totally clear
+.    duplicates drop
+ 15.    bysort wban date time: gen count = _N
+ 16.    tab count
+ 17.    tostring date, replace
+ 18.    gen date1 = date(date, "YMD")
+ 19.    format date1 %d
+ 20.    drop date
+ 21.    rename date1 date
+ 22.    drop count clear skycondition
+ 23.    rename hourlyprecip precipitation
+ 24.    rename drybulbcelsius temp_celsius
+ 25.    * Collapsing to hourly
+.    replace hour = hour/100
+ 26.    gen hour = floor(time)
+ 27.    collapse (mean) temp_celsius precipitation visibility relativehumidity cloud
+> s, by(wban date hour stationtype)
+ 28.    
+.    export delimited using "`i'hourly_proc.csv", replace
+ 29. }
+201403
+(44 vars, 4224185 obs)
+drybulbcelsius: characters M removed; replaced as double
+(18123 missing values generated)
+(4,111,212 real changes made)
+variable hourlyprecip was str4 now str5
+(78,149 real changes made)
+hourlyprecip has all characters numeric; replaced as double
+(4033063 missing values generated)
+relativehumidity: characters M removed; replaced as byte
+(1874915 missing values generated)
+(1,831,189 real changes made, 1,831,189 to missing)
+(1,831,189 missing values generated)
+visibility: characters M removed; replaced as double
+(1811931 missing values generated)
+
+Duplicates in terms of all variables
+
+(746 observations deleted)
+
+      count |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |  4,221,677       99.96       99.96
+          2 |      1,762        0.04      100.00
+------------+-----------------------------------
+      Total |  4,223,439      100.00
+date was long now str8
+variable hour not found
+r(111);
+
+end of do-file
+
+r(111);
+
+.  replace time = time/100
+variable time was int now float
+(4,216,818 real changes made)
+
+.  gen hour = floor(time)
+
+. tab hour
+
+       hour |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          0 |    176,599        4.18        4.18
+          1 |    177,550        4.20        8.39
+          2 |    178,126        4.22       12.60
+          3 |    178,665        4.23       16.83
+          4 |    178,794        4.23       21.07
+          5 |    178,502        4.23       25.29
+          6 |    178,017        4.21       29.51
+          7 |    178,049        4.22       33.72
+          8 |    177,683        4.21       37.93
+          9 |    177,159        4.19       42.13
+         10 |    176,859        4.19       46.31
+         11 |    175,487        4.16       50.47
+         12 |    175,256        4.15       54.62
+         13 |    175,085        4.15       58.76
+         14 |    174,675        4.14       62.90
+         15 |    173,995        4.12       67.02
+         16 |    173,630        4.11       71.13
+         17 |    173,424        4.11       75.24
+         18 |    173,044        4.10       79.33
+         19 |    173,174        4.10       83.43
+         20 |    173,990        4.12       87.55
+         21 |    174,834        4.14       91.69
+         22 |    175,465        4.15       95.85
+         23 |    175,377        4.15      100.00
+------------+-----------------------------------
+      Total |  4,223,439      100.00
+
+.  collapse (mean) temp_celsius precipitation visibility relativehumidity clouds, by
+> (wban date hour stationtype)
+
+. do ~/Dropbox/research/data/weather/bin/josh_data.do
+
+. * Stata program to collapse and combine daily weather data for the US
+. *
+. * Jeff Shrader
+. * First: 2015/07/21
+. * Time-stamp: <2015-08-09 19:06:04 jgs>
+. 
+. * Preliminaries
+. local dir "~/Dropbox/research/data/weather"
+
+. local data_ext "/Volumes/Data 2TB/data/weather"
+
+. cd "`data_ext'"
+/Volumes/Data 2TB/data/weather
+
+. local download 0
+
+. capture log close
+------------------------------------------------------------------------------------
+      name:  <unnamed>
+       log:  /Users/jgs/Dropbox/research/data/weather/bin/josh_weather_data.log
+  log type:  text
+ opened on:   9 Aug 2015, 19:06:07
+
+. 
+. * This is kludgey, but I need a datelist. This should be generated from dir
+. local datelist "201403 201404 201405 201406 201407 201408 201409 201410 201411 201
+> 412 201501 201502 201503 201504 201505 201506"
+
+. 
+. * We can add some code eventually to download the files directly.
+. * Just modify this code:
+. if "`download’" == "1" {
+.    cd "`dir'/data/raw"
+.    foreach i of local pollutants  {
+  2.       foreach t of local years {
+  3.          shell /usr/local/bin/wget -Odaily_`i'_`t'.zip "http://aqsdr1.epa.gov/a
+> qsweb/aqstmp/airdata/daily_`i'_`t'.zip"
+  4.       }
+  5.    }
+. }
+
+. 
+. * Unpack the data, collapse the hourly, and combine with the daily
+. * Unzip
+. /*
+> local filelist: dir . files "QCLCD*.zip"
+> foreach i of local filelist {
+>    di "`i'"
+>    * shell gzip -d `i'
+>    shell unzip `i'
+>    * unzipfile `i'
+> }
+> */
+. * Iterate through, grabbing humidity and cloud cover from hourly
+. foreach i of local datelist {
+  2.    di "`i'"
+  3.    import delimited using "QCLCD`i'/`i'hourly.txt", clear
+  4.    keep wban date time stationtype drybulbcelsius hourlyprecip skycondition vis
+> ibility relativehumidity
+  5.    destring drybulbcelsius, replace ignore("M")
+  6.    replace hourlyprecip = strtrim(hourlyprecip)
+  7.    replace hourlyprecip = "0.001" if hourlyprecip == "T"
+  8.    destring hourlyprecip, replace ignore("M")
+  9.    destring relativehumidity, replace ignore("M")
+ 10.    gen clear = (substr(skycondition,1,3) == "CLR" | substr(skycondition,1,2) ==
+>  "VV" | substr(skycondition,1,3) == "FEW")
+ 11.    replace clear = . if skycondition == "M"
+ 12.    gen clouds = 1 - clear
+ 13.    * Destring visibility as alternative to clouds
+.    destring visibility, replace ignore("M")
+ 14.    * There are repeat observations for reasons that aren't totally clear
+.    duplicates drop
+ 15.    bysort wban date time: gen count = _N
+ 16.    tab count
+ 17.    tostring date, replace
+ 18.    gen date1 = date(date, "YMD")
+ 19.    format date1 %d
+ 20.    drop date
+ 21.    rename date1 date
+ 22.    drop count clear skycondition
+ 23.    rename hourlyprecip precipitation
+ 24.    rename drybulbcelsius temp_celsius
+ 25.    * Collapsing to hourly
+.    replace time = time/100
+ 26.    gen hour = floor(time)
+ 27.    collapse (mean) temp_celsius precipitation visibility relativehumidity cloud
+> s, by(wban date hour stationtype)
+ 28.    
+.    export delimited using "`i'hourly_proc.csv", replace
+ 29. }
+201403
+(44 vars, 4224185 obs)
+drybulbcelsius: characters M removed; replaced as double
+(18123 missing values generated)
+(4,111,212 real changes made)
+variable hourlyprecip was str4 now str5
+(78,149 real changes made)
+hourlyprecip has all characters numeric; replaced as double
+(4033063 missing values generated)
+relativehumidity: characters M removed; replaced as byte
+(1874915 missing values generated)
+(1,831,189 real changes made, 1,831,189 to missing)
+(1,831,189 missing values generated)
+visibility: characters M removed; replaced as double
+(1811931 missing values generated)
+
+Duplicates in terms of all variables
+
+(746 observations deleted)
+
+      count |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |  4,221,677       99.96       99.96
+          2 |      1,762        0.04      100.00
+------------+-----------------------------------
+      Total |  4,223,439      100.00
+date was long now str8
+variable time was int now float
+(4,216,818 real changes made)
+file 201403hourly_proc.csv saved
+201404
+(44 vars, 3999576 obs)
+drybulbcelsius: characters M removed; replaced as double
+(15775 missing values generated)
+(3,860,982 real changes made)
+variable hourlyprecip was str4 now str5
+(61,151 real changes made)
+hourlyprecip has all characters numeric; replaced as double
+(3799831 missing values generated)
+relativehumidity: characters M removed; replaced as byte
+(1726589 missing values generated)
+(1,686,587 real changes made, 1,686,587 to missing)
+(1,686,587 missing values generated)
+visibility: characters M removed; replaced as double
+(1671296 missing values generated)
+
+Duplicates in terms of all variables
+
+(690 observations deleted)
+
+      count |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |  3,997,498       99.97       99.97
+          2 |      1,388        0.03      100.00
+------------+-----------------------------------
+      Total |  3,998,886      100.00
+date was long now str8
+variable time was int now float
+(3,992,708 real changes made)
+(note: file 201404hourly_proc.csv not found)
+file 201404hourly_proc.csv saved
+201405
+(44 vars, 4197465 obs)
+drybulbcelsius: characters M removed; replaced as double
+(17206 missing values generated)
+(4,093,307 real changes made)
+variable hourlyprecip was str4 now str5
+(52,706 real changes made)
+hourlyprecip has all characters numeric; replaced as double
+(4040601 missing values generated)
+relativehumidity: characters M removed; replaced as byte
+(1874084 missing values generated)
+(1,831,823 real changes made, 1,831,823 to missing)
+(1,831,823 missing values generated)
+visibility: characters M removed; replaced as double
+(1808405 missing values generated)
+
+Duplicates in terms of all variables
+
+(896 observations deleted)
+
+      count |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |  4,194,751       99.96       99.96
+          2 |      1,818        0.04      100.00
+------------+-----------------------------------
+      Total |  4,196,569      100.00
+date was long now str8
+variable time was int now float
+(4,190,027 real changes made)
+(note: file 201405hourly_proc.csv not found)
+file 201405hourly_proc.csv saved
+201406
+(44 vars, 3597427 obs)
+drybulbcelsius: characters M removed; replaced as double
+(22824 missing values generated)
+(3,480,848 real changes made)
+variable hourlyprecip was str4 now str5
+(45,847 real changes made)
+hourlyprecip has all characters numeric; replaced as double
+(3435001 missing values generated)
+relativehumidity: characters M removed; replaced as byte
+(1345021 missing values generated)
+(1,302,037 real changes made, 1,302,037 to missing)
+(1,302,037 missing values generated)
+visibility: characters M removed; replaced as double
+(1283442 missing values generated)
+
+Duplicates in terms of all variables
+
+(546 observations deleted)
+
+      count |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |  3,595,043       99.95       99.95
+          2 |      1,838        0.05      100.00
+------------+-----------------------------------
+      Total |  3,596,881      100.00
+date was long now str8
+variable time was int now float
+(3,592,124 real changes made)
+(note: file 201406hourly_proc.csv not found)
+file 201406hourly_proc.csv saved
+201407
+(44 vars, 3657465 obs)
+drybulbcelsius: characters M removed; replaced as double
+(19524 missing values generated)
+(3,567,822 real changes made)
+variable hourlyprecip was str4 now str5
+(41,179 real changes made)
+hourlyprecip has all characters numeric; replaced as double
+(3526643 missing values generated)
+relativehumidity: characters M removed; replaced as byte
+(1433405 missing values generated)
+(1,335,144 real changes made, 1,335,144 to missing)
+(1,335,144 missing values generated)
+visibility: characters M removed; replaced as double
+(1318983 missing values generated)
+
+Duplicates in terms of all variables
+
+(523 observations deleted)
+
+      count |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |  3,655,494       99.96       99.96
+          2 |      1,448        0.04      100.00
+------------+-----------------------------------
+      Total |  3,656,942      100.00
+date was long now str8
+variable time was int now float
+(3,652,121 real changes made)
+(note: file 201407hourly_proc.csv not found)
+file 201407hourly_proc.csv saved
+201408
+(44 vars, 4427485 obs)
+drybulbcelsius: characters M removed; replaced as double
+(30797 missing values generated)
+(4,307,722 real changes made)
+variable hourlyprecip was str4 now str5
+(43,864 real changes made)
+hourlyprecip has all characters numeric; replaced as double
+(4263858 missing values generated)
+relativehumidity: characters M removed; replaced as byte
+(1474931 missing values generated)
+(1,370,525 real changes made, 1,370,525 to missing)
+(1,370,525 missing values generated)
+visibility: characters M removed; replaced as double
+(1343757 missing values generated)
+
+Duplicates in terms of all variables
+
+(580 observations deleted)
+
+      count |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |  4,420,111       99.85       99.85
+          2 |      6,794        0.15      100.00
+------------+-----------------------------------
+      Total |  4,426,905      100.00
+date was long now str8
+variable time was int now float
+(4,421,676 real changes made)
+(note: file 201408hourly_proc.csv not found)
+file 201408hourly_proc.csv saved
+201409
+(44 vars, 4264718 obs)
+drybulbcelsius: characters M removed; replaced as double
+(33267 missing values generated)
+(4,154,656 real changes made)
+variable hourlyprecip was str4 now str5
+(45,624 real changes made)
+hourlyprecip has all characters numeric; replaced as double
+(4109032 missing values generated)
+relativehumidity: characters M removed; replaced as byte
+(1538833 missing values generated)
+(1,320,429 real changes made, 1,320,429 to missing)
+(1,320,429 missing values generated)
+visibility: characters M removed; replaced as double
+(1291923 missing values generated)
+
+Duplicates in terms of all variables
+
+(650 observations deleted)
+
+      count |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |  4,258,702       99.87       99.87
+          2 |      5,366        0.13      100.00
+------------+-----------------------------------
+      Total |  4,264,068      100.00
+date was long now str8
+variable time was int now float
+(4,258,980 real changes made)
+(note: file 201409hourly_proc.csv not found)
+file 201409hourly_proc.csv saved
+201410
+(44 vars, 4441311 obs)
+drybulbcelsius: characters M removed; replaced as double
+(27895 missing values generated)
+(4,315,433 real changes made)
+(59,240 real changes made)
+hourlyprecip has all characters numeric; replaced as double
+(4256193 missing values generated)
+relativehumidity: characters M removed; replaced as byte
+(1413799 missing values generated)
+(1,357,161 real changes made, 1,357,161 to missing)
+(1,357,161 missing values generated)
+visibility: characters M removed; replaced as double
+(1336633 missing values generated)
+
+Duplicates in terms of all variables
+
+(536 observations deleted)
+
+      count |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |  4,432,551       99.81       99.81
+          2 |      8,224        0.19      100.00
+------------+-----------------------------------
+      Total |  4,440,775      100.00
+date was long now str8
+variable time was int now float
+(4,435,586 real changes made)
+(note: file 201410hourly_proc.csv not found)
+file 201410hourly_proc.csv saved
+201411
+(44 vars, 4320257 obs)
+drybulbcelsius: characters M removed; replaced as double
+(26962 missing values generated)
+(4,181,847 real changes made)
+variable hourlyprecip was str4 now str5
+(78,613 real changes made)
+hourlyprecip has all characters numeric; replaced as double
+(4103234 missing values generated)
+relativehumidity: characters M removed; replaced as byte
+(1363994 missing values generated)
+(1,311,949 real changes made, 1,311,949 to missing)
+(1,311,949 missing values generated)
+visibility: characters M removed; replaced as double
+(1290754 missing values generated)
+
+Duplicates in terms of all variables
+
+(484 observations deleted)
+
+      count |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |  4,315,485       99.90       99.90
+          2 |      4,288        0.10      100.00
+------------+-----------------------------------
+      Total |  4,319,773      100.00
+date was long now str8
+variable time was int now float
+(4,314,753 real changes made)
+(note: file 201411hourly_proc.csv not found)
+file 201411hourly_proc.csv saved
+201412
+(44 vars, 4577855 obs)
+drybulbcelsius: characters M removed; replaced as double
+(28514 missing values generated)
+(4,411,588 real changes made)
+variable hourlyprecip was str4 now str5
+(95,216 real changes made)
+hourlyprecip has all characters numeric; replaced as double
+(4316372 missing values generated)
+relativehumidity: characters M removed; replaced as byte
+(1400278 missing values generated)
+(1,328,610 real changes made, 1,328,610 to missing)
+(1,328,610 missing values generated)
+visibility: characters M removed; replaced as double
+(1311514 missing values generated)
+
+Duplicates in terms of all variables
+
+(504 observations deleted)
+
+      count |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |  4,569,597       99.83       99.83
+          2 |      7,754        0.17      100.00
+------------+-----------------------------------
+      Total |  4,577,351      100.00
+date was long now str8
+variable time was int now float
+(4,572,218 real changes made)
+(note: file 201412hourly_proc.csv not found)
+file 201412hourly_proc.csv saved
+201501
+(44 vars, 3689850 obs)
+drybulbcelsius: characters M removed; replaced as double
+(35752 missing values generated)
+(3,567,867 real changes made)
+(89,682 real changes made)
+hourlyprecip has all characters numeric; replaced as double
+(3478185 missing values generated)
+relativehumidity: characters M removed; replaced as byte
+(602304 missing values generated)
+(517,113 real changes made, 517,113 to missing)
+(517,113 missing values generated)
+visibility: characters M removed; replaced as double
+(501210 missing values generated)
+
+Duplicates in terms of all variables
+
+(619 observations deleted)
+
+      count |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |  3,685,759       99.91       99.91
+          2 |      3,472        0.09      100.00
+------------+-----------------------------------
+      Total |  3,689,231      100.00
+date was long now str8
+variable time was int now float
+(3,686,975 real changes made)
+(note: file 201501hourly_proc.csv not found)
+file 201501hourly_proc.csv saved
+201502
+--Break--
+r(1);
+
+end of do-file
+
+--Break--
+r(1);
+
+. do ~/Dropbox/research/data/weather/bin/josh_data.do
+
+. * Stata program to collapse and combine daily weather data for the US
+. *
+. * Jeff Shrader
+. * First: 2015/07/21
+. * Time-stamp: <2015-08-09 20:15:02 jgs>
+. 
+. * Preliminaries
+. local dir "~/Dropbox/research/data/weather"
+
+. local data_ext "/Volumes/Data 2TB/data/weather"
+
+. cd "`data_ext'"
+/Volumes/Data 2TB/data/weather
+
+. local download 0
+
+. capture log close
+------------------------------------------------------------------------------------
+      name:  <unnamed>
+       log:  /Users/jgs/Dropbox/research/data/weather/bin/josh_weather_data.log
+  log type:  text
+ opened on:   9 Aug 2015, 20:15:11
+
+. 
+. * This is kludgey, but I need a datelist. This should be generated from dir
+. local datelist "201403 201404 201405 201406 201407 201408 201409 201410 201411 201
+> 412 201501 201502 201503 201504 201505 201506"
+
+. 
+. * We can add some code eventually to download the files directly.
+. * Just modify this code:
+. if "`download’" == "1" {
+.    cd "`dir'/data/raw"
+.    foreach i of local pollutants  {
+  2.       foreach t of local years {
+  3.          shell /usr/local/bin/wget -Odaily_`i'_`t'.zip "http://aqsdr1.epa.gov/a
+> qsweb/aqstmp/airdata/daily_`i'_`t'.zip"
+  4.       }
+  5.    }
+. }
+
+. 
+. * Unpack the data, collapse the hourly, and combine with the daily
+. * Unzip
+. /*
+> local filelist: dir . files "QCLCD*.zip"
+> foreach i of local filelist {
+>    di "`i'"
+>    * shell gzip -d `i'
+>    shell unzip `i'
+>    * unzipfile `i'
+> }
+> */
+. * Iterate through, grabbing humidity and cloud cover from hourly
+. foreach i of local datelist {
+  2.    di "`i'"
+  3.    import delimited using "QCLCD`i'/`i'hourly.txt", clear
+  4.    * keep wban date time stationtype drybulbcelsius hourlyprecip skycondition v
+> isibility relativehumidity
+.    keep wban date time drybulbcelsius hourlyprecip skycondition visibility relativ
+> ehumidity
+  5.    destring drybulbcelsius, replace ignore("M")
+  6.    replace hourlyprecip = strtrim(hourlyprecip)
+  7.    replace hourlyprecip = "0.001" if hourlyprecip == "T"
+  8.    destring hourlyprecip, replace ignore("M")
+  9.    destring relativehumidity, replace ignore("M")
+ 10.    gen clear = (substr(skycondition,1,3) == "CLR" | substr(skycondition,1,2) ==
+>  "VV" | substr(skycondition,1,3) == "FEW")
+ 11.    replace clear = . if skycondition == "M"
+ 12.    gen clouds = 1 - clear
+ 13.    * Destring visibility as alternative to clouds
+.    destring visibility, replace ignore("M")
+ 14.    * There are repeat observations for reasons that aren't totally clear
+.    duplicates drop
+ 15.    bysort wban date time: gen count = _N
+ 16.    tab count
+ 17.    tostring date, replace
+ 18.    gen date1 = date(date, "YMD")
+ 19.    format date1 %d
+ 20.    drop date
+ 21.    rename date1 date
+ 22.    drop count clear skycondition
+ 23.    rename hourlyprecip precipitation
+ 24.    rename drybulbcelsius temp_celsius
+ 25.    * Collapsing to hourly
+.    replace time = time/100
+ 26.    gen hour = floor(time)
+ 27.    collapse (mean) temp_celsius precipitation visibility relativehumidity cloud
+> s, by(wban date hour)
+ 28.    bysort wban date: egen max_temp = max(temp)
+ 29.    bysort wban date: egen min_temp = min(temp)
+ 30.    
+.    export delimited using "`i'hourly_proc.csv", replace
+ 31. }
+201403
+(44 vars, 4224185 obs)
+drybulbcelsius: characters M removed; replaced as double
+(18123 missing values generated)
+(4,111,212 real changes made)
+variable hourlyprecip was str4 now str5
+(78,149 real changes made)
+hourlyprecip has all characters numeric; replaced as double
+(4033063 missing values generated)
+relativehumidity: characters M removed; replaced as byte
+(1874915 missing values generated)
+(1,831,189 real changes made, 1,831,189 to missing)
+(1,831,189 missing values generated)
+visibility: characters M removed; replaced as double
+(1811931 missing values generated)
+
+Duplicates in terms of all variables
+
+(746 observations deleted)
+
+      count |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |  4,221,677       99.96       99.96
+          2 |      1,762        0.04      100.00
+------------+-----------------------------------
+      Total |  4,223,439      100.00
+date was long now str8
+variable time was int now float
+(4,216,818 real changes made)
+(4264 missing values generated)
+(4264 missing values generated)
+file 201403hourly_proc.csv saved
+201404
+(44 vars, 3999576 obs)
+drybulbcelsius: characters M removed; replaced as double
+(15775 missing values generated)
+(3,860,982 real changes made)
+variable hourlyprecip was str4 now str5
+(61,151 real changes made)
+hourlyprecip has all characters numeric; replaced as double
+(3799831 missing values generated)
+relativehumidity: characters M removed; replaced as byte
+(1726589 missing values generated)
+(1,686,587 real changes made, 1,686,587 to missing)
+(1,686,587 missing values generated)
+visibility: characters M removed; replaced as double
+(1671296 missing values generated)
+
+Duplicates in terms of all variables
+
+(690 observations deleted)
+
+      count |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |  3,997,498       99.97       99.97
+          2 |      1,388        0.03      100.00
+------------+-----------------------------------
+      Total |  3,998,886      100.00
+date was long now str8
+variable time was int now float
+(3,992,708 real changes made)
+(3756 missing values generated)
+(3756 missing values generated)
+file 201404hourly_proc.csv saved
+201405
+(44 vars, 4197465 obs)
+drybulbcelsius: characters M removed; replaced as double
+(17206 missing values generated)
+(4,093,307 real changes made)
+variable hourlyprecip was str4 now str5
+(52,706 real changes made)
+hourlyprecip has all characters numeric; replaced as double
+(4040601 missing values generated)
+relativehumidity: characters M removed; replaced as byte
+(1874084 missing values generated)
+(1,831,823 real changes made, 1,831,823 to missing)
+(1,831,823 missing values generated)
+visibility: characters M removed; replaced as double
+(1808405 missing values generated)
+
+Duplicates in terms of all variables
+
+(896 observations deleted)
+
+      count |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |  4,194,751       99.96       99.96
+          2 |      1,818        0.04      100.00
+------------+-----------------------------------
+      Total |  4,196,569      100.00
+date was long now str8
+variable time was int now float
+(4,190,027 real changes made)
+(3422 missing values generated)
+(3422 missing values generated)
+file 201405hourly_proc.csv saved
+201406
+(44 vars, 3597427 obs)
+drybulbcelsius: characters M removed; replaced as double
+(22824 missing values generated)
+(3,480,848 real changes made)
+variable hourlyprecip was str4 now str5
+(45,847 real changes made)
+hourlyprecip has all characters numeric; replaced as double
+(3435001 missing values generated)
+relativehumidity: characters M removed; replaced as byte
+(1345021 missing values generated)
+(1,302,037 real changes made, 1,302,037 to missing)
+(1,302,037 missing values generated)
+visibility: characters M removed; replaced as double
+(1283442 missing values generated)
+
+Duplicates in terms of all variables
+
+(546 observations deleted)
+
+      count |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |  3,595,043       99.95       99.95
+          2 |      1,838        0.05      100.00
+------------+-----------------------------------
+      Total |  3,596,881      100.00
+date was long now str8
+variable time was int now float
+(3,592,124 real changes made)
+(6005 missing values generated)
+(6005 missing values generated)
+file 201406hourly_proc.csv saved
+201407
+(44 vars, 3657465 obs)
+drybulbcelsius: characters M removed; replaced as double
+(19524 missing values generated)
+(3,567,822 real changes made)
+variable hourlyprecip was str4 now str5
+(41,179 real changes made)
+hourlyprecip has all characters numeric; replaced as double
+(3526643 missing values generated)
+relativehumidity: characters M removed; replaced as byte
+(1433405 missing values generated)
+(1,335,144 real changes made, 1,335,144 to missing)
+(1,335,144 missing values generated)
+visibility: characters M removed; replaced as double
+(1318983 missing values generated)
+
+Duplicates in terms of all variables
+
+(523 observations deleted)
+
+      count |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |  3,655,494       99.96       99.96
+          2 |      1,448        0.04      100.00
+------------+-----------------------------------
+      Total |  3,656,942      100.00
+date was long now str8
+variable time was int now float
+(3,652,121 real changes made)
+(5219 missing values generated)
+(5219 missing values generated)
+file 201407hourly_proc.csv saved
+201408
+(44 vars, 4427485 obs)
+drybulbcelsius: characters M removed; replaced as double
+(30797 missing values generated)
+(4,307,722 real changes made)
+variable hourlyprecip was str4 now str5
+(43,864 real changes made)
+hourlyprecip has all characters numeric; replaced as double
+(4263858 missing values generated)
+relativehumidity: characters M removed; replaced as byte
+(1474931 missing values generated)
+(1,370,525 real changes made, 1,370,525 to missing)
+(1,370,525 missing values generated)
+visibility: characters M removed; replaced as double
+(1343757 missing values generated)
+
+Duplicates in terms of all variables
+
+(580 observations deleted)
+
+      count |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |  4,420,111       99.85       99.85
+          2 |      6,794        0.15      100.00
+------------+-----------------------------------
+      Total |  4,426,905      100.00
+date was long now str8
+variable time was int now float
+(4,421,676 real changes made)
+(7753 missing values generated)
+(7753 missing values generated)
+file 201408hourly_proc.csv saved
+201409
+(44 vars, 4264718 obs)
+drybulbcelsius: characters M removed; replaced as double
+(33267 missing values generated)
+(4,154,656 real changes made)
+variable hourlyprecip was str4 now str5
+(45,624 real changes made)
+hourlyprecip has all characters numeric; replaced as double
+(4109032 missing values generated)
+relativehumidity: characters M removed; replaced as byte
+(1538833 missing values generated)
+(1,320,429 real changes made, 1,320,429 to missing)
+(1,320,429 missing values generated)
+visibility: characters M removed; replaced as double
+(1291923 missing values generated)
+
+Duplicates in terms of all variables
+
+(650 observations deleted)
+
+      count |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |  4,258,702       99.87       99.87
+          2 |      5,366        0.13      100.00
+------------+-----------------------------------
+      Total |  4,264,068      100.00
+date was long now str8
+variable time was int now float
+(4,258,980 real changes made)
+(8344 missing values generated)
+(8344 missing values generated)
+file 201409hourly_proc.csv saved
+201410
+(44 vars, 4441311 obs)
+drybulbcelsius: characters M removed; replaced as double
+(27895 missing values generated)
+(4,315,433 real changes made)
+(59,240 real changes made)
+hourlyprecip has all characters numeric; replaced as double
+(4256193 missing values generated)
+relativehumidity: characters M removed; replaced as byte
+(1413799 missing values generated)
+(1,357,161 real changes made, 1,357,161 to missing)
+(1,357,161 missing values generated)
+visibility: characters M removed; replaced as double
+(1336633 missing values generated)
+
+Duplicates in terms of all variables
+
+(536 observations deleted)
+
+      count |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |  4,432,551       99.81       99.81
+          2 |      8,224        0.19      100.00
+------------+-----------------------------------
+      Total |  4,440,775      100.00
+date was long now str8
+variable time was int now float
+(4,435,586 real changes made)
+(6534 missing values generated)
+(6534 missing values generated)
+file 201410hourly_proc.csv saved
+201411
+(44 vars, 4320257 obs)
+drybulbcelsius: characters M removed; replaced as double
+(26962 missing values generated)
+(4,181,847 real changes made)
+variable hourlyprecip was str4 now str5
+(78,613 real changes made)
+hourlyprecip has all characters numeric; replaced as double
+(4103234 missing values generated)
+relativehumidity: characters M removed; replaced as byte
+(1363994 missing values generated)
+(1,311,949 real changes made, 1,311,949 to missing)
+(1,311,949 missing values generated)
+visibility: characters M removed; replaced as double
+(1290754 missing values generated)
+
+Duplicates in terms of all variables
+
+(484 observations deleted)
+
+      count |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |  4,315,485       99.90       99.90
+          2 |      4,288        0.10      100.00
+------------+-----------------------------------
+      Total |  4,319,773      100.00
+date was long now str8
+variable time was int now float
+(4,314,753 real changes made)
+(5878 missing values generated)
+(5878 missing values generated)
+file 201411hourly_proc.csv saved
+201412
+(44 vars, 4577855 obs)
+drybulbcelsius: characters M removed; replaced as double
+(28514 missing values generated)
+(4,411,588 real changes made)
+variable hourlyprecip was str4 now str5
+(95,216 real changes made)
+hourlyprecip has all characters numeric; replaced as double
+(4316372 missing values generated)
+relativehumidity: characters M removed; replaced as byte
+(1400278 missing values generated)
+(1,328,610 real changes made, 1,328,610 to missing)
+(1,328,610 missing values generated)
+visibility: characters M removed; replaced as double
+(1311514 missing values generated)
+
+Duplicates in terms of all variables
+
+(504 observations deleted)
+
+      count |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |  4,569,597       99.83       99.83
+          2 |      7,754        0.17      100.00
+------------+-----------------------------------
+      Total |  4,577,351      100.00
+date was long now str8
+variable time was int now float
+(4,572,218 real changes made)
+(6314 missing values generated)
+(6314 missing values generated)
+file 201412hourly_proc.csv saved
+201501
+(44 vars, 3689850 obs)
+drybulbcelsius: characters M removed; replaced as double
+(35752 missing values generated)
+(3,567,867 real changes made)
+(89,682 real changes made)
+hourlyprecip has all characters numeric; replaced as double
+(3478185 missing values generated)
+relativehumidity: characters M removed; replaced as byte
+(602304 missing values generated)
+(517,113 real changes made, 517,113 to missing)
+(517,113 missing values generated)
+visibility: characters M removed; replaced as double
+(501210 missing values generated)
+
+Duplicates in terms of all variables
+
+(619 observations deleted)
+
+      count |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |  3,685,759       99.91       99.91
+          2 |      3,472        0.09      100.00
+------------+-----------------------------------
+      Total |  3,689,231      100.00
+date was long now str8
+variable time was int now float
+(3,686,975 real changes made)
+(8516 missing values generated)
+(8516 missing values generated)
+file 201501hourly_proc.csv saved
+201502
+(44 vars, 3910498 obs)
+drybulbcelsius: characters M removed; replaced as double
+(24056 missing values generated)
+(3,806,729 real changes made)
+(89,146 real changes made)
+hourlyprecip has all characters numeric; replaced as double
+(3717583 missing values generated)
+relativehumidity: characters M removed; replaced as byte
+(1299639 missing values generated)
+(1,171,327 real changes made, 1,171,327 to missing)
+(1,171,327 missing values generated)
+visibility: characters M removed; replaced as double
+(1156894 missing values generated)
+
+Duplicates in terms of all variables
+
+(469 observations deleted)
+
+      count |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |  3,903,515       99.83       99.83
+          2 |      6,514        0.17      100.00
+------------+-----------------------------------
+      Total |  3,910,029      100.00
+date was long now str8
+variable time was int now float
+(3,905,535 real changes made)
+(5534 missing values generated)
+(5534 missing values generated)
+(note: file 201502hourly_proc.csv not found)
+file 201502hourly_proc.csv saved
+201503
+(44 vars, 4496262 obs)
+drybulbcelsius: characters M removed; replaced as double
+(26773 missing values generated)
+(4,339,750 real changes made)
+variable hourlyprecip was str4 now str5
+(76,470 real changes made)
+hourlyprecip has all characters numeric; replaced as double
+(4263280 missing values generated)
+relativehumidity: characters M removed; replaced as byte
+(1427666 missing values generated)
+(1,354,913 real changes made, 1,354,913 to missing)
+(1,354,913 missing values generated)
+visibility: characters M removed; replaced as double
+(1333187 missing values generated)
+
+Duplicates in terms of all variables
+
+(816 observations deleted)
+
+      count |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |  4,489,206       99.86       99.86
+          2 |      6,240        0.14      100.00
+------------+-----------------------------------
+      Total |  4,495,446      100.00
+date was long now str8
+variable time was int now float
+(4,490,283 real changes made)
+(5564 missing values generated)
+(5564 missing values generated)
+(note: file 201503hourly_proc.csv not found)
+file 201503hourly_proc.csv saved
+201504
+(44 vars, 4221100 obs)
+drybulbcelsius: characters M removed; replaced as double
+(26489 missing values generated)
+(4,083,289 real changes made)
+variable hourlyprecip was str4 now str5
+(68,227 real changes made)
+hourlyprecip has all characters numeric; replaced as double
+(4015062 missing values generated)
+relativehumidity: characters M removed; replaced as byte
+(1505409 missing values generated)
+(1,275,061 real changes made, 1,275,061 to missing)
+(1,275,061 missing values generated)
+visibility: characters M removed; replaced as double
+(1259257 missing values generated)
+
+Duplicates in terms of all variables
+
+(564 observations deleted)
+
+      count |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |  4,215,154       99.87       99.87
+          2 |      5,382        0.13      100.00
+------------+-----------------------------------
+      Total |  4,220,536      100.00
+date was long now str8
+variable time was int now float
+(4,215,609 real changes made)
+(6213 missing values generated)
+(6213 missing values generated)
+(note: file 201504hourly_proc.csv not found)
+file 201504hourly_proc.csv saved
+201505
+(44 vars, 4472885 obs)
+drybulbcelsius: characters M removed; replaced as double
+(35638 missing values generated)
+(4,296,619 real changes made)
+variable hourlyprecip was str4 now str5
+(58,350 real changes made)
+hourlyprecip has all characters numeric; replaced as double
+(4238269 missing values generated)
+relativehumidity: characters M removed; replaced as byte
+(1399581 missing values generated)
+(1,355,599 real changes made, 1,355,599 to missing)
+(1,355,599 missing values generated)
+visibility: characters M removed; replaced as double
+(1332151 missing values generated)
+
+Duplicates in terms of all variables
+
+(644 observations deleted)
+
+      count |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |  4,467,743       99.90       99.90
+          2 |      4,498        0.10      100.00
+------------+-----------------------------------
+      Total |  4,472,241      100.00
+date was long now str8
+variable time was int now float
+(4,467,125 real changes made)
+(8526 missing values generated)
+(8526 missing values generated)
+(note: file 201505hourly_proc.csv not found)
+file 201505hourly_proc.csv saved
+201506
+(44 vars, 4293650 obs)
+drybulbcelsius: characters M removed; replaced as double
+(43963 missing values generated)
+(4,153,572 real changes made)
+variable hourlyprecip was str4 now str5
+(49,580 real changes made)
+hourlyprecip has all characters numeric; replaced as double
+(4103992 missing values generated)
+relativehumidity: characters M removed; replaced as byte
+(1395760 missing values generated)
+(1,334,910 real changes made, 1,334,910 to missing)
+(1,334,910 missing values generated)
+visibility: characters M removed; replaced as double
+(1295807 missing values generated)
+
+Duplicates in terms of all variables
+
+(835 observations deleted)
+
+      count |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |  4,288,235       99.89       99.89
+          2 |      4,580        0.11      100.00
+------------+-----------------------------------
+      Total |  4,292,815      100.00
+date was long now str8
+variable time was int now float
+(4,287,849 real changes made)
+(10723 missing values generated)
+(10723 missing values generated)
+(note: file 201506hourly_proc.csv not found)
+file 201506hourly_proc.csv saved
+
+. 
+. log close
+      name:  <unnamed>
+       log:  /Users/jgs/Dropbox/research/data/weather/bin/josh_weather_data.log
+  log type:  text
+ closed on:   9 Aug 2015, 22:26:15
+------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------
+      name:  <unnamed>
+       log:  /Users/jgs/Dropbox/research/data/weather/bin/josh_weather_data.log
+  log type:  text
+ opened on:  15 Sep 2015, 14:01:55
+
+. * This is kludgey, but I need a datelist. This should be generated from dir
+
+. local datelist "201403 201404 201405 201406 201407 201408 201409 201410 201411 201412 2
+> 01501 201502 201503 201504 201505 201506"
+
+. local filelist: dir . files "QCLCD*.zip"
+
+. help append
+
+. local i = "201403"
+
+.  import delimited "QCLCD`i'/`i'station.txt", delimit("|")
+no; data in memory would be lost
+r(4);
+
+.  drop if missing(wban)
+(0 observations deleted)
+
+.  sort wban
+
+.  save "`i'station.dta", replace
+(note: file 201403station.dta not found)
+file 201403station.dta saved
+
+.  local station_files = "`station_files' `i'station.dta"
+
+.  import delimited "QCLCD`i'/`i'station.txt", delimit("|") clear
+(15 vars, 2162 obs)
+
+.  drop if missing(wban)
+(7 observations deleted)
+
+.  sort wban
+
+.  save "`i'station.dta", replace
+file 201403station.dta saved
+
+. di "`station_files'"
+ 201403station.dta
+
+.  import delimited "`i'hourly_proc.csv", clear
+(10 vars, 1447575 obs)
+
+.  merge m:1 using "`i'station.dta", keepusing(latitude longitude timezone) nogenerate ke
+> ep(match)
+varlist must be specified after merge m:1
+    you must specify the key variables after merge m:1
+r(198);
+
+.  merge m:1 wban using "`i'station.dta", keepusing(latitude longitude timezone) nogenera
+> te keep(match)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                             0
+    matched                         1,447,575  
+    -----------------------------------------
+
+. list in 1/1
+
+     +------------------------------------------------------------------------------+
+  1. | wban |      date | hour | temp_c~s | precip~n | visibi~y | relati~y | clouds |
+     | 3011 | 01mar2014 |    0 |        3 |        . |       10 |       76 |      1 |
+     |------------------------------------------------------------------------------|
+     |   max_temp   |   min_temp    |   latitude    |   longit~e    |   timezone    |
+     |   3.333333   |        -.5    |      37.95    |     -107.9    |         -7    |
+     +------------------------------------------------------------------------------+
+
+. de
+
+Contains data
+  obs:     1,447,575                          
+ vars:            13                          
+ size:    73,826,325                          
+-----------------------------------------------------------------------------------------
+              storage   display    value
+variable name   type    format     label      variable label
+-----------------------------------------------------------------------------------------
+wban            long    %8.0g                 
+date            str9    %9s                   
+hour            byte    %8.0g                 
+temp_celsius    float   %9.0g                 
+precipitation   float   %9.0g                 
+visibility      float   %9.0g                 
+relativehumid~y float   %9.0g                 
+clouds          float   %9.0g                 
+max_temp        float   %9.0g                 
+min_temp        float   %9.0g                 
+latitude        float   %9.0g                 Latitude
+longitude       float   %9.0g                 Longitude
+timezone        byte    %8.0g                 TimeZone
+-----------------------------------------------------------------------------------------
+Sorted by: 
+     Note: Dataset has changed since last saved.
+
+.  gen date1 = date(date)
+invalid syntax
+r(198);
+
+.  gen date1 = date(date, "YMD")
+(1,447,575 missing values generated)
+
+. drop date1
+
+. help date
+
+. list in 1/1
+
+     +------------------------------------------------------------------------------+
+  1. | wban |      date | hour | temp_c~s | precip~n | visibi~y | relati~y | clouds |
+     | 3011 | 01mar2014 |    0 |        3 |        . |       10 |       76 |      1 |
+     |------------------------------------------------------------------------------|
+     |   max_temp   |   min_temp    |   latitude    |   longit~e    |   timezone    |
+     |   3.333333   |        -.5    |      37.95    |     -107.9    |         -7    |
+     +------------------------------------------------------------------------------+
+
+.  gen date1 = date(date, "DMY")
+
+. replace hour = hour + timezone
+(1,446,828 real changes made)
+
+. help clock
+
+. gen time = date + "00:00:00"
+
+. list in 1/1
+
+     +----------------------------------------------------------------------------------+
+  1. | wban |      date | hour | temp_c~s | precip~n  | visibi~y  | relati~y  | clouds  |
+     | 3011 | 01mar2014 |   -7 |        3 |        .  |       10  |       76  |      1  |
+     |----------------------------------------------------------------------------------|
+     | max_temp | min_temp | latitude | longit~e | timezone | date1 |              time |
+     | 3.333333 |      -.5 |    37.95 |   -107.9 |       -7 | 19783 | 01mar201400:00:00 |
+     +----------------------------------------------------------------------------------+
+
+. drop time
+
+. tostring hour, replace
+hour was byte now str3
+
+. destring hour, replace
+hour has all characters numeric; replaced as byte
+
+. di clock("01mar2014 23:00:00")
+invalid syntax
+r(198);
+
+. di clock("01mar2014 23:00:00", "DMYhms")
+1.709e+12
+
+. help format
+
+. di format clock("01mar2014 23:00:00", "DMYhms") %tc
+format not found
+r(111);
+
+. di clock("01mar2014 23:00:00", "DMYhms")
+1.709e+12
+
+. local time clock("01mar2014 23:00:00", "DMYhms")
+
+. gen test = clock("01mar2014 23:00:00", "DMYhms")
+
+. format test
+
+  variable name  display format
+  -----------------------------
+  test           %9.0g
+  -----------------------------
+
+. gen test = clock("01mar2014 23:00:00", "DMYhms") in 1
+variable test already defined
+r(110);
+
+. drop test
+
+. gen test = clock("01mar2014 23:00:00", "DMYhms") in 1
+(1,447,574 missing values generated)
+
+. format test %16.0f
+
+. drop test
+
+. gen double test = clock("01mar2014 23:00:00", "DMYhms") in 1
+(1,447,574 missing values generated)
+
+. format test %16.0f
+
+. gen double test = clock("01mar2014 25:00:00", "DMYhms") in 2
+variable test already defined
+r(110);
+
+. replace double test = clock("01mar2014 25:00:00", "DMYhms") in 2
+double not allowed
+r(101);
+
+. replace test = clock("01mar2014 25:00:00", "DMYhms") in 2
+(0 real changes made)
+
+. list test in 2/2
+
+     +------+
+     | test |
+     |------|
+  2. |    . |
+     +------+
+
+. list test in 12
+
+     +------+
+     | test |
+     |------|
+ 12. |    . |
+     +------+
+
+. list test in 1/2
+
+     +---------------+
+     |          test |
+     |---------------|
+  1. | 1709334000000 |
+  2. |             . |
+     +---------------+
+
+. replace test = clock("02mar2014 1:00:00", "DMYhms") in 2
+(1 real change made)
+
+. list test in 1/2
+
+     +---------------+
+     |          test |
+     |---------------|
+  1. | 1709334000000 |
+  2. | 1709341200000 |
+     +---------------+
+
+. list in 1/1
+
+     +------------------------------------------------------------------------------+
+  1. | wban |      date | hour | temp_c~s | precip~n | visibi~y | relati~y | clouds |
+     | 3011 | 01mar2014 |   -7 |        3 |        . |       10 |       76 |      1 |
+     |------------------------------------------------------------------------------|
+     | max_temp | min_temp | latitude | longit~e | timezone | date1 |          test |
+     | 3.333333 |      -.5 |    37.95 |   -107.9 |       -7 | 19783 | 1709334000000 |
+     +------------------------------------------------------------------------------+
+
+. de
+
+Contains data
+  obs:     1,447,575                          
+ vars:            15                          
+ size:    91,197,225                          
+-----------------------------------------------------------------------------------------
+              storage   display    value
+variable name   type    format     label      variable label
+-----------------------------------------------------------------------------------------
+wban            long    %8.0g                 
+date            str9    %9s                   
+hour            byte    %10.0g                
+temp_celsius    float   %9.0g                 
+precipitation   float   %9.0g                 
+visibility      float   %9.0g                 
+relativehumid~y float   %9.0g                 
+clouds          float   %9.0g                 
+max_temp        float   %9.0g                 
+min_temp        float   %9.0g                 
+latitude        float   %9.0g                 Latitude
+longitude       float   %9.0g                 Longitude
+timezone        byte    %8.0g                 TimeZone
+date1           float   %9.0g                 
+test            double  %16.0f                
+-----------------------------------------------------------------------------------------
+Sorted by: 
+     Note: Dataset has changed since last saved.
+
+. list date* in 1/1
+
+     +-------------------+
+     |      date   date1 |
+     |-------------------|
+  1. | 01mar2014   19783 |
+     +-------------------+
+
+. gen clock = clock(date, "DMY")
+
+. drop clock
+
+. gen double clock = clock(date, "DMY")
+
+. list in 1/1
+
+     +------------------------------------------------------------------------------+
+  1. | wban |      date | hour | temp_c~s | precip~n | visibi~y | relati~y | clouds |
+     | 3011 | 01mar2014 |   -7 |        3 |        . |       10 |       76 |      1 |
+     |------------------------------------------------------------------------------|
+     | max_temp | min_temp | latitude | longit~e | timezone | date1 |          test |
+     | 3.333333 |      -.5 |    37.95 |   -107.9 |       -7 | 19783 | 1709334000000 |
+     |------------------------------------------------------------------------------|
+     |                                      clock                                   |
+     |                                  1.709e+12                                   |
+     +------------------------------------------------------------------------------+
+
+. format clock %16.0f
+
+. list in 1/1
+
+     +------------------------------------------------------------------------------+
+  1. | wban |      date | hour | temp_c~s | precip~n | visibi~y | relati~y | clouds |
+     | 3011 | 01mar2014 |   -7 |        3 |        . |       10 |       76 |      1 |
+     |------------------------------------------------------------------------------|
+     | max_temp | min_temp | latitude | longit~e | timezone | date1 |          test |
+     | 3.333333 |      -.5 |    37.95 |   -107.9 |       -7 | 19783 | 1709334000000 |
+     |------------------------------------------------------------------------------|
+     |                                        clock                                 |
+     |                                1709251200000                                 |
+     +------------------------------------------------------------------------------+
+
+. drop test
+
+. gen double test = clock("01mar2014 00:00:00", "DMYhms") in 1
+(1,447,574 missing values generated)
+
+. list in 1/1
+
+     +------------------------------------------------------------------------------+
+  1. | wban |      date | hour | temp_c~s | precip~n | visibi~y | relati~y | clouds |
+     | 3011 | 01mar2014 |   -7 |        3 |        . |       10 |       76 |      1 |
+     |------------------------------------------------------------------------------|
+     | max_temp | min_temp | latitude | longit~e | timezone | date1 |         clock |
+     | 3.333333 |      -.5 |    37.95 |   -107.9 |       -7 | 19783 | 1709251200000 |
+     |------------------------------------------------------------------------------|
+     |                                       test                                   |
+     |                                  1.709e+12                                   |
+     +------------------------------------------------------------------------------+
+
+. format test %16.0f
+
+. list in 1/1
+
+     +------------------------------------------------------------------------------+
+  1. | wban |      date | hour | temp_c~s | precip~n | visibi~y | relati~y | clouds |
+     | 3011 | 01mar2014 |   -7 |        3 |        . |       10 |       76 |      1 |
+     |------------------------------------------------------------------------------|
+     | max_temp | min_temp | latitude | longit~e | timezone | date1 |         clock |
+     | 3.333333 |      -.5 |    37.95 |   -107.9 |       -7 | 19783 | 1709251200000 |
+     |------------------------------------------------------------------------------|
+     |                                         test                                 |
+     |                                1709251200000                                 |
+     +------------------------------------------------------------------------------+
+
+. drop test
+
+. gen double test = clock("01mar2014 01:00:00", "DMYhms") in 1
+(1,447,574 missing values generated)
+
+. format test %16.0f
+
+. gen diff = clock - test
+(1,447,574 missing values generated)
+
+. list in 1/1
+
+     +------------------------------------------------------------------------------+
+  1. | wban |      date | hour | temp_c~s | precip~n | visibi~y | relati~y | clouds |
+     | 3011 | 01mar2014 |   -7 |        3 |        . |       10 |       76 |      1 |
+     |------------------------------------------------------------------------------|
+     | max_temp | min_temp | latitude | longit~e | timezone | date1 |         clock |
+     | 3.333333 |      -.5 |    37.95 |   -107.9 |       -7 | 19783 | 1709251200000 |
+     |------------------------------------------------------------------------------|
+     |                       test              |                  diff              |
+     |              1709254800000              |              -3600000              |
+     +------------------------------------------------------------------------------+
+
+.  gen double time_weather_gmt = clock(date, "DMY")
+
+.  replace time_weather_gmt = time_weather_gmt-hour*3600000
+(1,387,475 real changes made)
+
+.  format time_weather_gmt %tc
+
+. list in 1/1
+
+     +------------------------------------------------------------------------------+
+  1. | wban |      date | hour | temp_c~s | precip~n | visibi~y | relati~y | clouds |
+     | 3011 | 01mar2014 |   -7 |        3 |        . |       10 |       76 |      1 |
+     |------------------------------------------------------------------------------|
+     | max_temp | min_temp | latitude | longit~e | timezone | date1 |         clock |
+     | 3.333333 |      -.5 |    37.95 |   -107.9 |       -7 | 19783 | 1709251200000 |
+     |------------------------------------------------------------------------------|
+     |               test      |          diff      |        time_weather_gmt       |
+     |      1709254800000      |      -3600000      |      01mar2014 07:00:00       |
+     +------------------------------------------------------------------------------+
+
+.  import delimited "`i'hourly_proc.csv", clear
+(10 vars, 1447575 obs)
+
+.  merge m:1 wban using "`i'station.dta", keepusing(latitude longitude timezone) nogenera
+> te keep(match)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                             0
+    matched                         1,447,575  
+    -----------------------------------------
+
+.  gen double time_weather_gmt = clock(date, "DMY")
+
+. list in 1/1
+
+     +------------------------------------------------------------------------------+
+  1. | wban |      date | hour | temp_c~s | precip~n | visibi~y | relati~y | clouds |
+     | 3011 | 01mar2014 |    0 |        3 |        . |       10 |       76 |      1 |
+     |-------------------------+----------------------------------------------------|
+     |  max_temp  |  min_temp  |  latitude  |  longit~e  |  timezone  |  time_we~t  |
+     |  3.333333  |       -.5  |     37.95  |    -107.9  |        -7  |  1.709e+12  |
+     +------------------------------------------------------------------------------+
+
+.  replace time_weather_gmt = time_weather_gmt+hour-timezone*3600000
+(1,447,543 real changes made)
+
+.  format time_weather_gmt %tc
+
+. list in 1/5
+
+     +------------------------------------------------------------------------------+
+  1. | wban |      date | hour | temp_c~s | precip~n | visibi~y | relati~y | clouds |
+     | 3011 | 01mar2014 |    0 |        3 |        . |       10 |       76 |      1 |
+     |------------------------------------------------------------------------------|
+     | max_temp | min_temp | latitude | longit~e  | timezone  |   time_weather_gmt  |
+     | 3.333333 |      -.5 |    37.95 |   -107.9  |       -7  | 01mar2014 07:00:00  |
+     +------------------------------------------------------------------------------+
+
+     +------------------------------------------------------------------------------+
+  2. | wban |      date | hour | temp_c~s | precip~n | visibi~y | relati~y | clouds |
+     | 3011 | 01mar2014 |    1 | 3.333333 |        . |       10 | 69.33334 |      1 |
+     |------------------------------------------------------------------------------|
+     | max_temp | min_temp | latitude | longit~e  | timezone  |   time_weather_gmt  |
+     | 3.333333 |      -.5 |    37.95 |   -107.9  |       -7  | 01mar2014 07:00:00  |
+     +------------------------------------------------------------------------------+
+
+     +------------------------------------------------------------------------------+
+  3. | wban |      date | hour | temp_c~s | precip~n | visibi~y | relati~y | clouds |
+     | 3011 | 01mar2014 |    2 |        3 |        . |      8.5 |       72 |      1 |
+     |------------------------------------------------------------------------------|
+     | max_temp | min_temp | latitude | longit~e  | timezone  |   time_weather_gmt  |
+     | 3.333333 |      -.5 |    37.95 |   -107.9  |       -7  | 01mar2014 07:00:00  |
+     +------------------------------------------------------------------------------+
+
+     +------------------------------------------------------------------------------+
+  4. | wban |      date | hour | temp_c~s | precip~n | visibi~y | relati~y | clouds |
+     | 3011 | 01mar2014 |    3 |      2.5 |        . |        7 |     80.5 |      1 |
+     |------------------------------------------------------------------------------|
+     | max_temp | min_temp | latitude | longit~e  | timezone  |   time_weather_gmt  |
+     | 3.333333 |      -.5 |    37.95 |   -107.9  |       -7  | 01mar2014 07:00:00  |
+     +------------------------------------------------------------------------------+
+
+     +------------------------------------------------------------------------------+
+  5. | wban |      date | hour | temp_c~s | precip~n | visibi~y | relati~y | clouds |
+     | 3011 | 01mar2014 |    4 |        3 |        . |        7 |       79 |      1 |
+     |------------------------------------------------------------------------------|
+     | max_temp | min_temp | latitude | longit~e  | timezone  |   time_weather_gmt  |
+     | 3.333333 |      -.5 |    37.95 |   -107.9  |       -7  | 01mar2014 07:00:00  |
+     +------------------------------------------------------------------------------+
+
+. drop time_weather_gmt
+
+.  gen double time_weather_gmt = clock(date, "DMY")
+
+.  replace time_weather_gmt = time_weather_gmt+(hour-timezone)*3600000
+(1,446,910 real changes made)
+
+.  format time_weather_gmt %tc
+
+. list in 1/5
+
+     +------------------------------------------------------------------------------+
+  1. | wban |      date | hour | temp_c~s | precip~n | visibi~y | relati~y | clouds |
+     | 3011 | 01mar2014 |    0 |        3 |        . |       10 |       76 |      1 |
+     |------------------------------------------------------------------------------|
+     | max_temp | min_temp | latitude | longit~e  | timezone  |   time_weather_gmt  |
+     | 3.333333 |      -.5 |    37.95 |   -107.9  |       -7  | 01mar2014 07:00:00  |
+     +------------------------------------------------------------------------------+
+
+     +------------------------------------------------------------------------------+
+  2. | wban |      date | hour | temp_c~s | precip~n | visibi~y | relati~y | clouds |
+     | 3011 | 01mar2014 |    1 | 3.333333 |        . |       10 | 69.33334 |      1 |
+     |------------------------------------------------------------------------------|
+     | max_temp | min_temp | latitude | longit~e  | timezone  |   time_weather_gmt  |
+     | 3.333333 |      -.5 |    37.95 |   -107.9  |       -7  | 01mar2014 08:00:00  |
+     +------------------------------------------------------------------------------+
+
+     +------------------------------------------------------------------------------+
+  3. | wban |      date | hour | temp_c~s | precip~n | visibi~y | relati~y | clouds |
+     | 3011 | 01mar2014 |    2 |        3 |        . |      8.5 |       72 |      1 |
+     |------------------------------------------------------------------------------|
+     | max_temp | min_temp | latitude | longit~e  | timezone  |   time_weather_gmt  |
+     | 3.333333 |      -.5 |    37.95 |   -107.9  |       -7  | 01mar2014 09:00:00  |
+     +------------------------------------------------------------------------------+
+
+     +------------------------------------------------------------------------------+
+  4. | wban |      date | hour | temp_c~s | precip~n | visibi~y | relati~y | clouds |
+     | 3011 | 01mar2014 |    3 |      2.5 |        . |        7 |     80.5 |      1 |
+     |------------------------------------------------------------------------------|
+     | max_temp | min_temp | latitude | longit~e  | timezone  |   time_weather_gmt  |
+     | 3.333333 |      -.5 |    37.95 |   -107.9  |       -7  | 01mar2014 10:00:00  |
+     +------------------------------------------------------------------------------+
+
+     +------------------------------------------------------------------------------+
+  5. | wban |      date | hour | temp_c~s | precip~n | visibi~y | relati~y | clouds |
+     | 3011 | 01mar2014 |    4 |        3 |        . |        7 |       79 |      1 |
+     |------------------------------------------------------------------------------|
+     | max_temp | min_temp | latitude | longit~e  | timezone  |   time_weather_gmt  |
+     | 3.333333 |      -.5 |    37.95 |   -107.9  |       -7  | 01mar2014 11:00:00  |
+     +------------------------------------------------------------------------------+
+
+. local station_files = ""
+
+. foreach i of local datelist {
+  2.  import delimited "QCLCD`i'/`i'station.txt", delimit("|") clear
+  3.  drop if missing(wban)
+  4.  sort wban
+  5.  save "`i'station.dta", replace
+  6.  local station_files = "`station_files' `i'station.dta"
+  7.  import delimited "`i'hourly_proc.csv", clear
+  8.  merge m:1 wban using "`i'station.dta", keepusing(latitude longitude timezone) nogen
+> erate keep(match)
+  9.  gen double time_weather_gmt = clock(date, "DMY")
+ 10.  replace time_weather_gmt = time_weather_gmt+(hour-timezone)*3600000
+ 11.  format time_weather_gmt %16.0f
+ 12.  drop date hour
+ 13.  sort wban time_weather_gmt
+ 14.  export delimited using "`i'hourly_proc.csv", replace
+ 15. }
+(15 vars, 2162 obs)
+(7 observations deleted)
+file 201403station.dta saved
+(10 vars, 1447575 obs)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                             0
+    matched                         1,447,575  
+    -----------------------------------------
+(1,446,910 real changes made)
+file 201403hourly_proc.csv saved
+(15 vars, 2162 obs)
+(7 observations deleted)
+(note: file 201404station.dta not found)
+file 201404station.dta saved
+(10 vars, 1400763 obs)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                             0
+    matched                         1,400,763  
+    -----------------------------------------
+(1,400,124 real changes made)
+file 201404hourly_proc.csv saved
+(15 vars, 2162 obs)
+(7 observations deleted)
+(note: file 201405station.dta not found)
+file 201405station.dta saved
+(10 vars, 1452765 obs)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                             0
+    matched                         1,452,765  
+    -----------------------------------------
+(1,452,183 real changes made)
+file 201405hourly_proc.csv saved
+(15 vars, 2162 obs)
+(7 observations deleted)
+(note: file 201406station.dta not found)
+file 201406station.dta saved
+(10 vars, 1361531 obs)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                             0
+    matched                         1,361,531  
+    -----------------------------------------
+(1,360,952 real changes made)
+file 201406hourly_proc.csv saved
+(15 vars, 2554 obs)
+(7 observations deleted)
+(note: file 201407station.dta not found)
+file 201407station.dta saved
+(10 vars, 1388591 obs)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                             0
+    matched                         1,388,591  
+    -----------------------------------------
+(1,387,998 real changes made)
+file 201407hourly_proc.csv saved
+(15 vars, 2553 obs)
+(7 observations deleted)
+(note: file 201408station.dta not found)
+file 201408station.dta saved
+(10 vars, 1665734 obs)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                             0
+    matched                         1,665,734  
+    -----------------------------------------
+(1,665,033 real changes made)
+file 201408hourly_proc.csv saved
+(15 vars, 2553 obs)
+(7 observations deleted)
+(note: file 201409station.dta not found)
+file 201409station.dta saved
+(10 vars, 1595640 obs)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                             0
+    matched                         1,595,640  
+    -----------------------------------------
+(1,594,953 real changes made)
+file 201409hourly_proc.csv saved
+(15 vars, 2553 obs)
+(7 observations deleted)
+(note: file 201410station.dta not found)
+file 201410station.dta saved
+(10 vars, 1667071 obs)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                             0
+    matched                         1,667,071  
+    -----------------------------------------
+(1,666,354 real changes made)
+file 201410hourly_proc.csv saved
+(15 vars, 2553 obs)
+(7 observations deleted)
+(note: file 201411station.dta not found)
+file 201411station.dta saved
+(10 vars, 1613627 obs)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                             0
+    matched                         1,613,627  
+    -----------------------------------------
+(1,612,923 real changes made)
+file 201411hourly_proc.csv saved
+(15 vars, 2553 obs)
+(7 observations deleted)
+(note: file 201412station.dta not found)
+file 201412station.dta saved
+(10 vars, 1668650 obs)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                             0
+    matched                         1,668,650  
+    -----------------------------------------
+(1,667,918 real changes made)
+file 201412hourly_proc.csv saved
+(15 vars, 2553 obs)
+(7 observations deleted)
+(note: file 201501station.dta not found)
+file 201501station.dta saved
+(10 vars, 1592011 obs)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                             0
+    matched                         1,592,011  
+    -----------------------------------------
+(1,591,310 real changes made)
+file 201501hourly_proc.csv saved
+(15 vars, 2553 obs)
+(7 observations deleted)
+(note: file 201502station.dta not found)
+file 201502station.dta saved
+(10 vars, 1426847 obs)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                             0
+    matched                         1,426,847  
+    -----------------------------------------
+(1,426,223 real changes made)
+file 201502hourly_proc.csv saved
+(15 vars, 2553 obs)
+(7 observations deleted)
+(note: file 201503station.dta not found)
+file 201503station.dta saved
+(10 vars, 1667754 obs)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                             0
+    matched                         1,667,754  
+    -----------------------------------------
+(1,667,078 real changes made)
+file 201503hourly_proc.csv saved
+(15 vars, 2553 obs)
+(7 observations deleted)
+(note: file 201504station.dta not found)
+file 201504station.dta saved
+(10 vars, 1573084 obs)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                             0
+    matched                         1,573,084  
+    -----------------------------------------
+(1,572,425 real changes made)
+file 201504hourly_proc.csv saved
+(15 vars, 2553 obs)
+(7 observations deleted)
+(note: file 201505station.dta not found)
+file 201505station.dta saved
+(10 vars, 1663813 obs)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                             0
+    matched                         1,663,813  
+    -----------------------------------------
+(1,663,136 real changes made)
+file 201505hourly_proc.csv saved
+(15 vars, 2553 obs)
+(7 observations deleted)
+(note: file 201506station.dta not found)
+file 201506station.dta saved
+(10 vars, 1609901 obs)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                             0
+    matched                         1,609,901  
+    -----------------------------------------
+(1,609,203 real changes made)
+file 201506hourly_proc.csv saved
+
+. isid wban time_weather_gmt 
+
+. use 201403station.dta, clear
+
+. gen temp = 0
+
+. append using `station_files'
+(note: variable name was str35, now str37 to accommodate using data's values)
+(note: variable location was str50, now str54 to accommodate using data's values)
+
+. drop if temp == 0
+(2,155 observations deleted)
+
+. drop temp
+
+. keep wban timezone latitude longitude
+
+. isid wban
+variable wban does not uniquely identify the observations
+r(459);
+
+. bysort wban: gen count = _N
+
+. tab count
+
+      count |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          5 |          5        0.01        0.01
+         12 |      4,704       12.01       12.02
+         16 |     34,464       87.98      100.00
+------------+-----------------------------------
+      Total |     39,173      100.00
+
+. br if count == 5
+
+. drop count
+
+. duplicates drop
+
+Duplicates in terms of all variables
+
+(36,592 observations deleted)
+
+. bysort wban: gen count = _N
+
+. tab count
+
+      count |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |      2,514       97.40       97.40
+          2 |         64        2.48       99.88
+          3 |          3        0.12      100.00
+------------+-----------------------------------
+      Total |      2,581      100.00
+
+. br if count == 2
+
+. br if count == 3
+
+. ls
+
+total 7016928
+-rw-r--r--  1 jgs  wheel  191305725 Jul 22 07:49 2014.csv.zip
+-rw-r--r--  1 jgs  wheel  108599561 Sep 15 15:38 201403hourly_proc.csv
+-rw-r--r--  1 jgs  wheel     268755 Sep 15 15:38 201403station.dta
+-rw-r--r--  1 jgs  wheel  104637869 Sep 15 15:39 201404hourly_proc.csv
+-rw-r--r--  1 jgs  wheel     268755 Sep 15 15:38 201404station.dta
+-rw-r--r--  1 jgs  wheel  108377005 Sep 15 15:39 201405hourly_proc.csv
+-rw-r--r--  1 jgs  wheel     268755 Sep 15 15:39 201405station.dta
+-rw-r--r--  1 jgs  wheel  102098529 Sep 15 15:40 201406hourly_proc.csv
+-rw-r--r--  1 jgs  wheel     268755 Sep 15 15:39 201406station.dta
+-rw-r--r--  1 jgs  wheel  103921283 Sep 15 15:40 201407hourly_proc.csv
+-rw-r--r--  1 jgs  wheel     331077 Sep 15 15:40 201407station.dta
+-rw-r--r--  1 jgs  wheel  124676542 Sep 15 15:41 201408hourly_proc.csv
+-rw-r--r--  1 jgs  wheel     330951 Sep 15 15:40 201408station.dta
+-rw-r--r--  1 jgs  wheel  118607151 Sep 15 15:41 201409hourly_proc.csv
+-rw-r--r--  1 jgs  wheel     330951 Sep 15 15:41 201409station.dta
+-rw-r--r--  1 jgs  wheel  123917403 Sep 15 15:42 201410hourly_proc.csv
+-rw-r--r--  1 jgs  wheel     330951 Sep 15 15:41 201410station.dta
+-rw-r--r--  1 jgs  wheel  120725823 Sep 15 15:42 201411hourly_proc.csv
+-rw-r--r--  1 jgs  wheel     330951 Sep 15 15:42 201411station.dta
+-rw-r--r--  1 jgs  wheel  124512008 Sep 15 15:43 201412hourly_proc.csv
+-rw-r--r--  1 jgs  wheel     330951 Sep 15 15:42 201412station.dta
+-rw-r--r--  1 jgs  wheel   93671631 Jul 22 07:48 2015.csv.zip
+-rw-r--r--  1 jgs  wheel  119439700 Sep 15 15:43 201501hourly_proc.csv
+-rw-r--r--  1 jgs  wheel     330951 Sep 15 15:43 201501station.dta
+-rw-r--r--  1 jgs  wheel  107922449 Sep 15 15:44 201502hourly_proc.csv
+-rw-r--r--  1 jgs  wheel     330951 Sep 15 15:43 201502station.dta
+-rw-r--r--  1 jgs  wheel  124985885 Sep 15 15:44 201503hourly_proc.csv
+-rw-r--r--  1 jgs  wheel     330951 Sep 15 15:44 201503station.dta
+-rw-r--r--  1 jgs  wheel  117234554 Sep 15 15:45 201504hourly_proc.csv
+-rw-r--r--  1 jgs  wheel     330951 Sep 15 15:44 201504station.dta
+-rw-r--r--  1 jgs  wheel  124287091 Sep 15 15:45 201505hourly_proc.csv
+-rw-r--r--  1 jgs  wheel     330951 Sep 15 15:45 201505station.dta
+-rw-r--r--  1 jgs  wheel  120658199 Sep 15 15:46 201506hourly_proc.csv
+-rw-r--r--  1 jgs  wheel     330951 Sep 15 15:45 201506station.dta
+drwx------@ 8 jgs  wheel        272 Aug  9 15:15 QCLCD201403/
+-rw-r--r--@ 1 jgs  wheel   74019247 Jul 21 16:51 QCLCD201403.zip
+drwx------@ 8 jgs  wheel        272 Aug  9 15:16 QCLCD201404/
+-rw-r--r--@ 1 jgs  wheel   71425330 Jul 21 16:51 QCLCD201404.zip
+drwx------@ 8 jgs  wheel        272 Aug  9 15:17 QCLCD201405/
+-rw-r--r--@ 1 jgs  wheel   70959127 Jul 21 16:51 QCLCD201405.zip
+drwx------@ 8 jgs  wheel        272 Aug  9 15:17 QCLCD201406/
+-rw-r--r--@ 1 jgs  wheel   64740698 Jul 21 16:50 QCLCD201406.zip
+drwx------@ 8 jgs  wheel        272 Aug  9 15:17 QCLCD201407/
+-rw-r--r--@ 1 jgs  wheel   64429505 Jul 21 16:50 QCLCD201407.zip
+drwx------@ 8 jgs  wheel        272 Aug  9 15:17 QCLCD201408/
+-rw-r--r--@ 1 jgs  wheel   77201788 Jul 21 16:50 QCLCD201408.zip
+drwx------@ 8 jgs  wheel        272 Aug  9 15:18 QCLCD201409/
+-rw-r--r--@ 1 jgs  wheel   75481732 Jul 21 16:49 QCLCD201409.zip
+drwx------@ 8 jgs  wheel        272 Aug  9 15:18 QCLCD201410/
+-rw-r--r--@ 1 jgs  wheel   80156630 Jul 21 16:44 QCLCD201410.zip
+drwx------@ 8 jgs  wheel        272 Aug  9 15:18 QCLCD201411/
+-rw-r--r--@ 1 jgs  wheel   81042192 Jul 21 16:43 QCLCD201411.zip
+drwx------@ 8 jgs  wheel        272 Aug  9 15:19 QCLCD201412/
+-rw-r--r--@ 1 jgs  wheel   82241813 Jul 21 16:43 QCLCD201412.zip
+drwx------@ 8 jgs  wheel        272 Aug  9 15:19 QCLCD201501/
+-rw-r--r--@ 1 jgs  wheel   78054123 Jul 21 16:43 QCLCD201501.zip
+drwx------@ 8 jgs  wheel        272 Aug  9 15:20 QCLCD201502/
+-rw-r--r--@ 1 jgs  wheel   73869931 Jul 21 16:43 QCLCD201502.zip
+drwx------@ 8 jgs  wheel        272 Aug  9 15:20 QCLCD201503/
+-rw-r--r--@ 1 jgs  wheel   84061800 Jul 21 16:41 QCLCD201503.zip
+drwx------@ 8 jgs  wheel        272 Aug  9 15:20 QCLCD201504/
+-rw-r--r--@ 1 jgs  wheel   80531222 Jul 21 16:41 QCLCD201504.zip
+drwx------@ 8 jgs  wheel        272 Aug  9 15:20 QCLCD201505/
+-rw-r--r--@ 1 jgs  wheel   83387863 Jul 21 16:41 QCLCD201505.zip
+drwx------@ 8 jgs  wheel        272 Aug  9 15:20 QCLCD201506/
+-rw-r--r--@ 1 jgs  wheel   77033937 Jul 20 13:39 QCLCD201506.zip
+-rw-r--r--@ 1 jgs  wheel    7470114 Dec 12  2014 air.sig995.2000.nc
+-rw-r--r--@ 1 jgs  wheel    7447556 Dec 12  2014 air.sig995.2001.nc
+-rw-r--r--@ 1 jgs  wheel    7466413 Dec 12  2014 air.sig995.2002.nc
+-rw-r--r--@ 1 jgs  wheel    7440771 Dec 12  2014 air.sig995.2003.nc
+-rw-r--r--@ 1 jgs  wheel    7449713 Dec 12  2014 air.sig995.2004.nc
+-rw-r--r--@ 1 jgs  wheel    7413810 Dec 12  2014 air.sig995.2005.nc
+-rw-r--r--@ 1 jgs  wheel    7403298 Dec 12  2014 air.sig995.2006.nc
+-rw-r--r--@ 1 jgs  wheel    7401446 Dec 12  2014 air.sig995.2007.nc
+-rw-r--r--@ 1 jgs  wheel    7514666 Dec 12  2014 air.sig995.2008.nc
+-rw-r--r--@ 1 jgs  wheel    7420486 Dec 12  2014 air.sig995.2009.nc
+-rw-r--r--@ 1 jgs  wheel    7437485 Dec 12  2014 air.sig995.2010.nc
+-rw-r--r--@ 1 jgs  wheel    7440459 Dec 12  2014 air.sig995.2011.nc
+-rw-r--r--@ 1 jgs  wheel    7485143 Dec 12  2014 air.sig995.2012.nc
+-rw-r--r--@ 1 jgs  wheel    7391610 Dec 12  2014 air.sig995.2013.nc
+-rw-r--r--  1 jgs  wheel     744552 Jul 22 12:10 daily.dta
+-rw-r--r--  1 jgs  wheel    1727770 Jul 22 12:10 hourly_to_daily.dta
+drwxr-xr-x  4 jgs  wheel        136 Aug 10 10:32 test/
+-rw-r--r--  1 jgs  wheel   57046168 Jul 22 12:13 weather_station.dta
+-rw-r--r--  1 jgs  wheel    9649185 Jul 22 12:15 weather_station.dta.zip
+-rw-r--r--  1 jgs  wheel    3587066 Jul 22 10:50 weather_station_201403.dta
+-rw-r--r--  1 jgs  wheel    3457302 Jul 22 10:54 weather_station_201404.dta
+-rw-r--r--  1 jgs  wheel    3683910 Jul 22 11:00 weather_station_201405.dta
+-rw-r--r--  1 jgs  wheel    3548262 Jul 22 11:04 weather_station_201406.dta
+-rw-r--r--  1 jgs  wheel    3620577 Jul 22 11:09 weather_station_201407.dta
+-rw-r--r--  1 jgs  wheel    3596304 Jul 22 11:15 weather_station_201408.dta
+-rw-r--r--  1 jgs  wheel    3483702 Jul 22 11:20 weather_station_201409.dta
+-rw-r--r--  1 jgs  wheel    3574790 Jul 22 11:26 weather_station_201410.dta
+-rw-r--r--  1 jgs  wheel    3468672 Jul 22 11:32 weather_station_201411.dta
+-rw-r--r--  1 jgs  wheel    3549990 Jul 22 11:38 weather_station_201412.dta
+-rw-r--r--  1 jgs  wheel    3210726 Jul 22 11:42 weather_station_201501.dta
+-rw-r--r--  1 jgs  wheel    3156774 Jul 22 11:47 weather_station_201502.dta
+-rw-r--r--  1 jgs  wheel    3520230 Jul 22 11:53 weather_station_201503.dta
+-rw-r--r--  1 jgs  wheel    3439572 Jul 22 11:58 weather_station_201504.dta
+-rw-r--r--  1 jgs  wheel    3544720 Jul 22 12:04 weather_station_201505.dta
+-rw-r--r--  1 jgs  wheel    3457242 Jul 22 12:10 weather_station_201506.dta
+
+. use 201403station.dta, clear
+
+. gen temp = 0
+
+. append using `station_files'
+(note: variable name was str35, now str37 to accommodate using data's values)
+(note: variable location was str50, now str54 to accommodate using data's values)
+
+. drop if temp == 0
+(2,155 observations deleted)
+
+. drop temp
+
+. keep wban latitude longitude
+
+. duplicates drop 
+
+Duplicates in terms of all variables
+
+(36,593 observations deleted)
+
+. bysort wban: gen count = _n
+
+. keep if count == 1
+(33 observations deleted)
+
+. save qclcd_stations.dta, replace
+(note: file qclcd_stations.dta not found)
+file qclcd_stations.dta saved
+
+. export delimited using "qclcd_stations.csv", replace
+(note: file qclcd_stations.csv not found)
+file qclcd_stations.csv saved
+
+. drop count
+
+. save qclcd_stations.dta, replace
+file qclcd_stations.dta saved
+
+. export delimited using "qclcd_stations.csv", replace
+file qclcd_stations.csv saved
+
+. import delimited using "/Volumes/Data 2TB/data/weather/201403hourly_proc.csv", clear
+(12 vars, 1447575 obs)
+
+. list in 1/1
+
+     +---------------------------------------------------------------------------------+
+  1. | wban | temp_c~s | precip~n | visibi~y | relati~y | clouds | max_temp | min_temp |
+     | 3011 |        3 |        . |       10 |       76 |      1 | 3.333333 |      -.5 |
+     |---------------------------------------+-------------------+---------------------|
+     |     latitude      |     longit~e      |     timezone      |      time_we~t      |
+     |        37.95      |       -107.9      |           -7      |      1.709e+12      |
+     +---------------------------------------------------------------------------------+
+
+. format time_weather_gmt %16.0f
+
+. list in 1/1
+
+     +---------------------------------------------------------------------------------+
+  1. | wban | temp_c~s | precip~n | visibi~y | relati~y | clouds | max_temp | min_temp |
+     | 3011 |        3 |        . |       10 |       76 |      1 | 3.333333 |      -.5 |
+     |---------------------------------------------------------------------------------|
+     |     latitude     |     longit~e     |     timezone     |     time_weathe~t      |
+     |        37.95     |       -107.9     |           -7     |     1709276400000      |
+     +---------------------------------------------------------------------------------+
+
+. help d()
+
+. di tC(01jan1970 00:00)
+3.156e+11
+
+. di tC(01jan1960 00:00)
+0
+
+. di tC(01jan1961 00:00)
+3.162e+10
+
+. gen double test = time_weather_gmt 
+
+. format test %tc
+
+. list in 1/5
+
+     +---------------------------------------------------------------------------------+
+  1. | wban | temp_c~s | precip~n | visibi~y | relati~y | clouds | max_temp | min_temp |
+     | 3011 |        3 |        . |       10 |       76 |      1 | 3.333333 |      -.5 |
+     |---------------------------------------------------------------------------------|
+     |  latitude  |  longit~e  |  timezone  |  time_weathe~t   |                test   |
+     |     37.95  |    -107.9  |        -7  |  1709276400000   |  01mar2014 07:00:00   |
+     +---------------------------------------------------------------------------------+
+
+     +---------------------------------------------------------------------------------+
+  2. | wban | temp_c~s | precip~n | visibi~y | relati~y | clouds | max_temp | min_temp |
+     | 3011 | 3.333333 |        . |       10 | 69.33334 |      1 | 3.333333 |      -.5 |
+     |---------------------------------------------------------------------------------|
+     |  latitude  |  longit~e  |  timezone  |  time_weathe~t   |                test   |
+     |     37.95  |    -107.9  |        -7  |  1709280000000   |  01mar2014 08:00:00   |
+     +---------------------------------------------------------------------------------+
+
+     +---------------------------------------------------------------------------------+
+  3. | wban | temp_c~s | precip~n | visibi~y | relati~y | clouds | max_temp | min_temp |
+     | 3011 |        3 |        . |      8.5 |       72 |      1 | 3.333333 |      -.5 |
+     |---------------------------------------------------------------------------------|
+     |  latitude  |  longit~e  |  timezone  |  time_weathe~t   |                test   |
+     |     37.95  |    -107.9  |        -7  |  1709283600000   |  01mar2014 09:00:00   |
+     +---------------------------------------------------------------------------------+
+
+     +---------------------------------------------------------------------------------+
+  4. | wban | temp_c~s | precip~n | visibi~y | relati~y | clouds | max_temp | min_temp |
+     | 3011 |      2.5 |        . |        7 |     80.5 |      1 | 3.333333 |      -.5 |
+     |---------------------------------------------------------------------------------|
+     |  latitude  |  longit~e  |  timezone  |  time_weathe~t   |                test   |
+     |     37.95  |    -107.9  |        -7  |  1709287200000   |  01mar2014 10:00:00   |
+     +---------------------------------------------------------------------------------+
+
+     +---------------------------------------------------------------------------------+
+  5. | wban | temp_c~s | precip~n | visibi~y | relati~y | clouds | max_temp | min_temp |
+     | 3011 |        3 |        . |        7 |       79 |      1 | 3.333333 |      -.5 |
+     |---------------------------------------------------------------------------------|
+     |  latitude  |  longit~e  |  timezone  |  time_weathe~t   |                test   |
+     |     37.95  |    -107.9  |        -7  |  1709290800000   |  01mar2014 11:00:00   |
+     +---------------------------------------------------------------------------------+
+
+. foreach i of local datelist {
+  2.  import delimited "`i'hourly_proc.csv", clear
+  3.  replace time_weather_gmt = time_weather_gmt/1000
+  4.  export delimited using "`i'hourly_proc.csv", replace
+  5. }
+(12 vars, 1447575 obs)
+(1,447,575 real changes made)
+file 201403hourly_proc.csv saved
+(12 vars, 1400763 obs)
+(1,400,763 real changes made)
+file 201404hourly_proc.csv saved
+(12 vars, 1452765 obs)
+(1,452,765 real changes made)
+file 201405hourly_proc.csv saved
+(12 vars, 1361531 obs)
+(1,361,531 real changes made)
+file 201406hourly_proc.csv saved
+(12 vars, 1388591 obs)
+(1,388,591 real changes made)
+file 201407hourly_proc.csv saved
+(12 vars, 1665734 obs)
+(1,665,734 real changes made)
+file 201408hourly_proc.csv saved
+(12 vars, 1595640 obs)
+(1,595,640 real changes made)
+file 201409hourly_proc.csv saved
+(12 vars, 1667071 obs)
+(1,667,071 real changes made)
+file 201410hourly_proc.csv saved
+(12 vars, 1613627 obs)
+(1,613,627 real changes made)
+file 201411hourly_proc.csv saved
+(12 vars, 1668650 obs)
+(1,668,650 real changes made)
+file 201412hourly_proc.csv saved
+(12 vars, 1592011 obs)
+(1,592,011 real changes made)
+file 201501hourly_proc.csv saved
+(12 vars, 1426847 obs)
+(1,426,847 real changes made)
+file 201502hourly_proc.csv saved
+(12 vars, 1667754 obs)
+(1,667,754 real changes made)
+file 201503hourly_proc.csv saved
+(12 vars, 1573084 obs)
+(1,573,084 real changes made)
+file 201504hourly_proc.csv saved
+(12 vars, 1663813 obs)
+(1,663,813 real changes made)
+file 201505hourly_proc.csv saved
+(12 vars, 1609901 obs)
+(1,609,901 real changes made)
+file 201506hourly_proc.csv saved
+
+. di Cofc(time_weather_gmt[1])
+1.749e+09
+
+. di time_weather_gmt[1]
+1.749e+09
+
+. list in 1/1
+
+     +---------------------------------------------------------------------------------+
+  1. | wban | temp_c~s | precip~n | visibi~y | relati~y | clouds | max_temp | min_temp |
+     |  102 |     10.6 |        . |       10 |       25 |      0 |       15 |        5 |
+     |---------------------------------------+-------------------+---------------------|
+     |     latitude      |     longit~e      |     timezone      |      time_we~t      |
+     |       66.983      |     -160.433      |           -9      |      1.749e+09      |
+     +---------------------------------------------------------------------------------+
+
+. format time_weather_gmt %16.0f
+
+. list in 1/1
+
+     +---------------------------------------------------------------------------------+
+  1. | wban | temp_c~s | precip~n | visibi~y | relati~y | clouds | max_temp | min_temp |
+     |  102 |     10.6 |        . |       10 |       25 |      0 |       15 |        5 |
+     |---------------------------------------+-------------------+---------------------|
+     |     latitude      |     longit~e      |     timezone      |     time_wea~t      |
+     |       66.983      |     -160.433      |           -9      |     1748768400      |
+     +---------------------------------------------------------------------------------+
+
+. di Cofc(time_weather_gmt[1])
+1.749e+09
+
+. gen double test = Cofc(time_weather_gmt )
+
+. format test %16.0f
+
+. list in 1/1
+
+     +---------------------------------------------------------------------------------+
+  1. | wban | temp_c~s | precip~n | visibi~y | relati~y | clouds | max_temp | min_temp |
+     |  102 |     10.6 |        . |       10 |       25 |      0 |       15 |        5 |
+     |---------------------------------------------------------------------------------|
+     |   latitude   |   longit~e   |   timezone    |   time_wea~t    |         test    |
+     |     66.983   |   -160.433   |         -9    |   1748768400    |   1748768400    |
+     +---------------------------------------------------------------------------------+
+
+. format test %tC
+
+. list in 1/1
+
+     +---------------------------------------------------------------------------------+
+  1. | wban | temp_c~s | precip~n | visibi~y | relati~y | clouds | max_temp | min_temp |
+     |  102 |     10.6 |        . |       10 |       25 |      0 |       15 |        5 |
+     |---------------------------------------------------------------------------------|
+     |  latitude   |  longit~e   |  timezone   |  time_wea~t   |                test   |
+     |    66.983   |  -160.433   |        -9   |  1748768400   |  21jan1960 05:46:08   |
+     +---------------------------------------------------------------------------------+
+
+-------------------------------------------------------------------------------------------
+      name:  <unnamed>
+       log:  /Users/jgs/Dropbox/research/data/weather/bin/josh_weather_data.log
+  log type:  text
+ opened on:  21 Sep 2015, 13:23:05
+
+. * This is kludgey, but I need a datelist. This should be generated from dir
+
+. local datelist "201403 201404 201405 201406 201407 201408 201409 201410 201411 201412 201
+> 501 201502 201503 201504 201505 201506"
+
+. append using 201403station.dta 201404station.dta 201405station.dta 201406station.dta 2014
+> 07station.dta 201408station.dta 201409station.dta 201410station.dta 201411station.dta 201
+> 412station.dta 201501station.dta 201502station.dta 201503station.dta 201504station.dta 20
+> 1505station.dta 201506station.dta, generate(count)
+(note: variable name was str35, now str37 to accommodate using data's values)
+(note: variable location was str50, now str54 to accommodate using data's values)
+
+. bysort wban count: gen count2 = _n
+
+. keep if count2 == 1
+(4,484 observations deleted)
+
+. drop count2
+
+. duplicates drop
+
+Duplicates in terms of all variables
+
+(0 observations are duplicates)
+
+. su count
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+       count |     39,174     8.73924    4.533825          0         16
+
+. replace count = r(max)+1 if count == 0
+(1 real change made)
+
+. bysort wban: egen total = total(count)
+
+. list in 1/1
+
+     +------------------------------------------------------------------------------------+
+  1. | statec~e | county~e | sitenum | latitude | longitude | year | month | count | wban |
+     |        . |        . |       . | 34.09972 | -93.06583 |      |       |     1 |  100 |
+     |------------------------------------------------------------------------------------|
+     | wmo  |  callsign  |  climat..  |  cl~ecode  |  climat..  |         name  |  state  |
+     |   .  |       M89  |         .  |         3  |         .  |  ARKADELPHIA  |     AR  |
+     |------------------------------------------------------------------------------------|
+     |                     location | ground~t | statio~t | barome~r | timezone  | total  |
+     | DEXTER B FLORENCE MEM FLD AP |      182 |        . |        . |       -6  |   136  |
+     +------------------------------------------------------------------------------------+
+
+. list in 10/10
+
+     +------------------------------------------------------------------------------------------+
+ 10. | statec~e | county~e | sitenum | latitude | longitude | year | month | count | wban | wmo |
+     |        . |        . |       . | 34.09972 | -93.06583 |      |       |    10 |  100 |   . |
+     |-----------------------------------------------------------------------------+------------|
+     |   callsign   |   climat..   |   cl~ecode   |   climat..   |          name   |   state    |
+     |        M89   |          .   |          3   |          .   |   ARKADELPHIA   |      AR    |
+     |------------------------------------------------------------------------------------------|
+     |                     location  | ground~t  | statio~t  | barome~r  |  timezone  |  total  |
+     | DEXTER B FLORENCE MEM FLD AP  |      182  |        .  |        .  |        -6  |    136  |
+     +------------------------------------------------------------------------------------------+
+
+. local k = 1
+
+. foreach t of local datelist {
+  2.  gen ym = `t' if count == `k'
+  3.  local k = `k'+1
+  4. }
+(37,019 missing values generated)
+variable ym already defined
+r(110);
+
+. drop ym
+
+. local k = 1
+
+. gen ym = .
+(39,174 missing values generated)
+
+. foreach t of local datelist {
+  2.  replace ym = `t' if count == `k'
+  3.  local k = `k'+1
+  4. }
+(2,155 real changes made)
+(2,155 real changes made)
+(2,155 real changes made)
+(2,155 real changes made)
+(2,547 real changes made)
+(2,546 real changes made)
+(2,546 real changes made)
+(2,546 real changes made)
+(2,546 real changes made)
+(2,546 real changes made)
+(2,546 real changes made)
+(2,546 real changes made)
+(2,546 real changes made)
+(2,546 real changes made)
+(2,546 real changes made)
+(2,546 real changes made)
+
+. tab ym
+
+         ym |      Freq.     Percent        Cum.
+------------+-----------------------------------
+     201403 |      2,155        5.50        5.50
+     201404 |      2,155        5.50       11.00
+     201405 |      2,155        5.50       16.50
+     201406 |      2,155        5.50       22.00
+     201407 |      2,547        6.50       28.51
+     201408 |      2,546        6.50       35.01
+     201409 |      2,546        6.50       41.51
+     201410 |      2,546        6.50       48.01
+     201411 |      2,546        6.50       54.50
+     201412 |      2,546        6.50       61.00
+     201501 |      2,546        6.50       67.50
+     201502 |      2,546        6.50       74.00
+     201503 |      2,546        6.50       80.50
+     201504 |      2,546        6.50       87.00
+     201505 |      2,546        6.50       93.50
+     201506 |      2,546        6.50      100.00
+------------+-----------------------------------
+      Total |     39,173      100.00
+
+. keep wban latitude longitude ym
+
+. duplicates drop 
+
+Duplicates in terms of all variables
+
+(0 observations are duplicates)
+
+. save qclcd_stations.dta, replace
+file qclcd_stations.dta saved
+
+. foreach t of local datelist {
+  2.  export delimited wban latitude longitude using "qclcd_stations.csv" if ym == "`t'", replace
+  3. }
+type mismatch
+r(109);
+
+. de
+
+Contains data from qclcd_stations.dta
+  obs:        39,174                          
+ vars:             4                          21 Sep 2015 13:26
+ size:       626,784                          
+---------------------------------------------------------------------------------------------------
+              storage   display    value
+variable name   type    format     label      variable label
+---------------------------------------------------------------------------------------------------
+latitude        float   %9.0g                 Latitude
+longitude       float   %9.0g                 Longitude
+wban            long    %12.0g                WBAN
+ym              float   %9.0g                 
+---------------------------------------------------------------------------------------------------
+Sorted by: wban
+
+. tostring ym, replace
+ym was float now str6
+
+. foreach t of local datelist {
+  2.  export delimited wban latitude longitude using "qclcd_stations.csv" if ym == "`t'", replace
+  3. }
+file qclcd_stations.csv saved
+file qclcd_stations.csv saved
+file qclcd_stations.csv saved
+file qclcd_stations.csv saved
+file qclcd_stations.csv saved
+file qclcd_stations.csv saved
+file qclcd_stations.csv saved
+file qclcd_stations.csv saved
+file qclcd_stations.csv saved
+file qclcd_stations.csv saved
+file qclcd_stations.csv saved
+file qclcd_stations.csv saved
+file qclcd_stations.csv saved
+file qclcd_stations.csv saved
+file qclcd_stations.csv saved
+file qclcd_stations.csv saved
+
+. foreach t of local datelist {
+  2.  export delimited wban latitude longitude using "qclcd_stations_`t'.csv" if ym == "`t'", repla
+> ce
+  3. }
+(note: file qclcd_stations_201403.csv not found)
+file qclcd_stations_201403.csv saved
+(note: file qclcd_stations_201404.csv not found)
+file qclcd_stations_201404.csv saved
+(note: file qclcd_stations_201405.csv not found)
+file qclcd_stations_201405.csv saved
+(note: file qclcd_stations_201406.csv not found)
+file qclcd_stations_201406.csv saved
+(note: file qclcd_stations_201407.csv not found)
+file qclcd_stations_201407.csv saved
+(note: file qclcd_stations_201408.csv not found)
+file qclcd_stations_201408.csv saved
+(note: file qclcd_stations_201409.csv not found)
+file qclcd_stations_201409.csv saved
+(note: file qclcd_stations_201410.csv not found)
+file qclcd_stations_201410.csv saved
+(note: file qclcd_stations_201411.csv not found)
+file qclcd_stations_201411.csv saved
+(note: file qclcd_stations_201412.csv not found)
+file qclcd_stations_201412.csv saved
+(note: file qclcd_stations_201501.csv not found)
+file qclcd_stations_201501.csv saved
+(note: file qclcd_stations_201502.csv not found)
+file qclcd_stations_201502.csv saved
+(note: file qclcd_stations_201503.csv not found)
+file qclcd_stations_201503.csv saved
+(note: file qclcd_stations_201504.csv not found)
+file qclcd_stations_201504.csv saved
+(note: file qclcd_stations_201505.csv not found)
+file qclcd_stations_201505.csv saved
+(note: file qclcd_stations_201506.csv not found)
+file qclcd_stations_201506.csv saved
+
+. clear
+
+. exit
+-----------------------------------------------------------------------------------------------------
+      name:  <unnamed>
+       log:  /Users/jgs/Dropbox/research/data/weather/bin/josh_weather_data.log
+  log type:  text
+ opened on:  22 Sep 2015, 08:37:02
+
+. * This is kludgey, but I need a datelist. This should be generated from dir
+
+. local datelist "201403 201404 201405 201406 201407 201408 201409 201410 201411 201412 201501 201502
+>  201503 201504 201505 201506"
+
+. append using 201403station.dta 201404station.dta 201405station.dta 201406station.dta 201407station.
+> dta 201408station.dta 201409station.dta 201410station.dta 201411station.dta 201412station.dta 20150
+> 1station.dta 201502station.dta 201503station.dta 201504station.dta 201505station.dta 201506station.
+> dta, generate(count)
+(note: variable name was str35, now str37 to accommodate using data's values)
+(note: variable location was str50, now str54 to accommodate using data's values)
+
+. bysort wban count: gen count2 = _n
+
+. keep if count2 == 1
+(0 observations deleted)
+
+. drop count2
+
+. duplicates drop
+
+Duplicates in terms of all variables
+
+(0 observations are duplicates)
+
+. su count
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+       count |     39,173    8.739463    4.533668          1         16
+
+. replace count = r(max)+1 if count == 0
+(0 real changes made)
+
+. local download = 0
+
+. local debug = 0
+
+. * Preliminaries
+
+. local dir "/Volumes/Data 2TB/data/pollution/hourly"
+
+. local daily_dir "/Volumes/Data 2TB/data/pollution/daily"
+
+. capture log close

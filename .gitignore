@@ -1,9 +1,7 @@
-*doc/
 *data/
-*output/
-*maps/
+*code/archive
 
-
+*.Rhistory
 *.xlsx
 *.DS_Store
 *.csv

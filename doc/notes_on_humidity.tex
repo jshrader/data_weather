@@ -1,0 +1,128 @@
+\documentclass[letterpaper,12pt]{article}
+
+%--------------- Settings ---------------%
+\usepackage{amssymb,amsmath,amsthm,mathrsfs}
+%\usepackage[T1]{fontenc}
+\usepackage{epsfig,graphicx}
+\usepackage{epstopdf}
+\epstopdfsetup{update}
+\usepackage{booktabs}
+\usepackage{lscape}
+\usepackage{url,color,hyperref}
+\usepackage{titling}
+\usepackage{titlesec}
+\usepackage[top=1.25in,bottom=1.25in,left=1in,right=1in]{geometry}
+\usepackage{setspace}
+\usepackage{fancyhdr}
+\usepackage{longtable,rotating}
+\usepackage{caption,subcaption}
+\usepackage{authblk}
+\usepackage[backend=biber,bibencoding=utf8,strict,authordate,url=false,natbib]{biblatex-chicago}
+%\usepackage[notes,backend=biber]{biblatex-chicago}
+\bibliography{/home/jgs/Dropbox/research/papers/library.bib}
+
+\setlength{\parindent}{0.0in} 
+\setlength{\parskip}{0.1in}
+\setlength{\intextsep}{0.2in}
+\renewcommand{\baselinestretch}{1.2}
+
+%% Setting hyperlink colors
+\definecolor{darkblue}{rgb}{0.0,0.0,0.3}
+\hypersetup{colorlinks,breaklinks,
+            linkcolor=darkblue,urlcolor=darkblue,
+            anchorcolor=darkblue,citecolor=darkblue}
+
+
+%% Section commands, reduce text size and numbering
+\titleformat*{\section}{\large\bf}
+\titleformat*{\subsection}{\normalsize\bf}
+\titleformat*{\subsubsection}{\normalsize\bf}
+
+%% Theorems
+\newtheorem{assumption}{Assumption}[section]
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{example}{Example}[section]
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}[section]
+
+%% Own math commands and variables
+\DeclareMathOperator*{\plim}{plim} 
+\DeclareMathOperator*{\argmax}{argmax}
+\DeclareMathOperator*{\argmin}{argmin}
+
+\newcommand*{\e}{\ensuremath{\varepsilon}}
+\renewcommand*{\phi}{\ensuremath{\varphi}}
+\newcommand*{\F}{\ensuremath{\mathscr{F}}}
+\newcommand*{\G}{\ensuremath{\mathscr{G}}}
+\newcommand*{\FF}{\ensuremath{\mathbb{F}}}
+\newcommand*{\R}{\ensuremath{\mathbb{R}}}
+\newcommand*{\Var}[1]{\ensuremath{\text{Var}}}
+\newcommand*{\Exp}[1]{\ensuremath{\text{E}}}
+\newcommand*{\E}{\ensuremath{\mathbb{E}}}
+\newcommand*{\Cov}{\ensuremath{\text{Cov}}}
+\newcommand*{\mat}[1]{\ensuremath{\mathbf{#1}}}
+\newcommand*{\union}{\ensuremath{\cup}}
+\newcommand*{\intersection}{\ensuremath{\cap}}
+\newcommand{\degree}{\ensuremath{^\circ}}
+\newcommand*{\ind}{\ensuremath{\mathbbm{1}}}
+\renewcommand*{\P}{\ensuremath{\text{P}}}
+
+%\renewcommand{\citet}[2][]{
+%   \citeauthor{#2} (\citeyear[#1]{#2})
+%}
+
+% For including files from esttab
+\newcommand{\sym}[1]{\rlap{#1}\text{ }}
+
+
+
+\begin{document}
+
+%--------------- Title Page ---------------%
+\title{Notes on Humidity, Dew Point, Apparent Temperature, and Wet-Bulb Temperature}
+\author{Jeffrey Shrader\thanks{Shrader: Columbia University (e-mail: \url{jgs2103@columbia.edu}).}}
+
+
+\date{\normalsize \today}
+
+\maketitle
+
+% \tableofcontents
+% \newpage
+% --------------- Body of document --------------%
+\section{Definitions}
+These are largely copied from Wikipedia
+
+\textbf{Apparent temperature} is the temperature equivalent perceived by humans, caused by the combined effects of air temperature, relative humidity and wind speed. Examples of different apparent temperatures are the heat index and the wind chill factor.
+
+\textbf{Relative humidity}, expressed as a percentage, indicates a present state of absolute humidity relative to a maximum humidity given the same temperature.
+
+\textbf{Vapor pressure} or \textbf{equilibrium vapor pressure} is defined as the pressure exerted by a vapor in thermodynamic equilibrium with its condensed phases (solid or liquid) at a given temperature in a closed system.
+
+\textbf{Wet-bulb temperature} is the temperature read by a thermometer covered in water-soaked cloth (wet-bulb thermometer) over which air is passed. At 100\% relative humidity, the wet-bulb temperature is equal to the air temperature (dry-bulb temperature) and is lower at lower humidity. The wet-bulb temperature is the lowest temperature that can be reached under current ambient conditions by the evaporation of water only.
+
+
+\section{Calculations and Approximations}
+Calculation of heat index from temperature and either relative humidity or dewpoint temperature can be done using the 'weathermetrics' package in R.
+
+Calculation of wet bulb temperature can be done using dewpoint temperature, elevation, and dry bulb temperature, but I can only find ``skew-Z'' plots to calculate this. 
+
+
+%\newpage 
+%\clearpage
+%\printbibliography
+
+\end{document}
+
+% Common regex commands (M^x replace-regexp)
+% \(.\)  \\mat{\1}
+
+
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: t
+%%% End:
