@@ -5,12 +5,12 @@
 ##
 ## Jeff Shrader
 ## 2016/7/23
-## Time-stamp: "2021-11-24 13:02:54 jgs"
+## Time-stamp: "2021-11-24 13:03:26 jgs"
 
 ## Set options
 #begin_year <- 1950
 #end_year <- 1989
-begin_year <- 2010
+begin_year <- 1950
 end_year <- 2020
 station_list <- TRUE
 
