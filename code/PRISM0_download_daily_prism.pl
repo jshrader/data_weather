@@ -9,20 +9,21 @@ use File::chdir;
 # This code is taken practically verbatim from that document
 
 # Get the 1981 to present data
+# 'ppt',
 my $day; 
-my @clim_var = ('ppt','tmax','tmin','atmax','atmin','tdmean','tmean','vpdmax','vpdmin'); 
+my @clim_var = ('tmax','tmin','atmax','atmin','tdmean','tmean','vpdmax','vpdmin'); 
 my $base_url = 'http://services.nacse.org/prism/data/public/4km'; 
-my $start = DateTime->new( day => 1, month => 1, year => 1981 ); 
 my $stop = DateTime->new( day => 31, month => 12, year => 2020 );
-for my $i (@clim_var){
-       while($start <= $stop) { 
-                $day = $start->strftime('%Y%m%d');  #place date in proper format
-                chdir("/media/jgs/datadrive/data/weather/prism/prism_daily/$i/zip/") or die "$!";
-                system("wget -N --content-disposition $base_url/$i/$day"); 
-                sleep 2;  #to be nice to our server 
-                $start->add(days => 1);
-            }
-   }
+for my $var (@clim_var){
+    my $start = DateTime->new( day => 1, month => 1, year => 1981 ); 
+    while($start <= $stop) { 
+        $day = $start->strftime('%Y%m%d');  #place date in proper format
+        chdir("/media/jgs/datadrive/data/weather/prism/prism_daily/$var/zip/") or die "$!";
+        system("wget -N --content-disposition $base_url/$var/$day"); 
+        sleep 1;  #to be nice to our server 
+        $start->add(days => 1);
+    }
+}
 # Note that there is a structural break in the way PRISM handles data prior to 1981
 # Get the older data
 #for t in `seq 1974 1980`
