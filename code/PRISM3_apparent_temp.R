@@ -142,10 +142,10 @@ for(y in 1998:2020){
     ## setwd(paste0(datadrive_dir,"tdmean/",y,"/"))
     ## system(paste("cd",getwd(), "&& unzip -o '*.zip' -d ../../tdmean_hold"),ignore.stdout=TRUE)
     setwd(paste0(datadrive_dir,"vpd",mm,"/zip"))
-    system(paste0("cd ",getwd(), " && unzip -o '*",y,"*.zip' -d ../../vpd_hold "),ignore.stdout=TRUE)
+    system(paste0("cd ",getwd(), " && unzip -o '*_",y,"*.zip' -d ../../vpd_hold "),ignore.stdout=TRUE)
 
     setwd(paste0(datadrive_dir,w,"/zip"))
-    system(paste0("cd ",getwd(), " && unzip -o '*",y,"*.zip' -d ../../at_hold "),ignore.stdout=TRUE)
+    system(paste0("cd ",getwd(), " && unzip -o '*_",y,"*.zip' -d ../../at_hold "),ignore.stdout=TRUE)
     # List of files to process
     files_all <- list.files(path=paste0(datadrive_dir,"at_hold"),pattern=paste0(w,".*bil$"),full.names=TRUE)
     
