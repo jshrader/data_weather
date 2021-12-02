@@ -7,3 +7,7 @@ Currently the code covers:
 3. Berkeley Earth gridded data of various types (global coverage back to 1750 for some regions)
 4. Schlenker-Roberts version of PRISM data with consistent underlying weather stations (US)
 5. ERA5 gridded data (global)
+
+Partially implemented 
+1. (ISD)[https://www.ncei.noaa.gov/products/land-based-station/integrated-surface-database]
+2. (University of Delaware)[https://psl.noaa.gov/data/gridded/data.UDel_AirT_Precip.html] (used in many global climate analyses, but only available from 1900-2014)
