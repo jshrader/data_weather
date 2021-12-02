@@ -9,10 +9,7 @@ rm(list = ls())
 debug <- FALSE
 options(echo=TRUE)
 ptm_total <- proc.time()
-packages <- c("haven","parallel","tictoc","tidyverse","data.table","lubridate","weathermetrics","pbmcapply")
-new_packages <- packages[!(packages %in% installed.packages()[,"Package"])]
-if(length(new_packages)) install.packages(new_packages)
-lapply(packages, library, character.only = TRUE)
+pacman::p_load("haven","parallel","tictoc","tidyverse","data.table","lubridate","weathermetrics","pbmcapply")
 if(Sys.info()["nodename"]=="ALBATROSS"){
 } else {
   dir <- '~/Dropbox/research/'
