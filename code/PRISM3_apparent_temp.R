@@ -1,4 +1,4 @@
-## R code to calculate apparent temperature (heat index) from PRISM files. This
+## R code to calculate heat index from PRISM files. This
 ## needs to be done before averaging because the formula is nonlinear in
 ## temperature and dewpoint temperature. I have chosen to make this a different
 ## program than "prism_county_average_annual.R" because I wanted to maintain
@@ -6,6 +6,12 @@
 ## perform some redundant operations like unzipping and reading daily files.
 ## Eventually, we want to make the redundant operations into functions that
 ## can be called by both programs.
+##
+## We would also like to be able to calculate apparent temperature rather
+## than heat index, but that requires wind observations. Our wind data
+## from NARR is quite coarse. ERA5 should be able to provide high-resolution
+## wind information that we can merge with PRISM, or we could use ERA5 all
+## the way through. 
 ##
 ## Jeff Shrader
 ## First: 2018-11-29
@@ -135,17 +141,17 @@ for(y in 1998:2020){
     # Unzip all the files to a dewpoint holding bay
     ## setwd(paste0(datadrive_dir,"tdmean/",y,"/"))
     ## system(paste("cd",getwd(), "&& unzip -o '*.zip' -d ../../tdmean_hold"),ignore.stdout=TRUE)
-    setwd(paste0(datadrive_dir,"vpd",mm,"/",y,"/"))
-    system(paste("cd",getwd(), "&& unzip -o '*.zip' -d ../../vpd_hold"),ignore.stdout=TRUE)
+    setwd(paste0(datadrive_dir,"vpd",mm,"/zip"))
+    system(paste0("cd ",getwd(), " && unzip -o '*",y,"*.zip' -d ../../vpd_hold "),ignore.stdout=TRUE)
 
-    setwd(paste0(datadrive_dir,w,"/",y,"/"))
-    system(paste("cd",getwd(), "&& unzip -o '*.zip' -d ../../at_hold"),ignore.stdout=TRUE)
+    setwd(paste0(datadrive_dir,w,"/zip"))
+    system(paste0("cd ",getwd(), " && unzip -o '*",y,"*.zip' -d ../../at_hold "),ignore.stdout=TRUE)
     # List of files to process
     files_all <- list.files(path=paste0(datadrive_dir,"at_hold"),pattern=paste0(w,".*bil$"),full.names=TRUE)
     
     tic(w)
     setattr(files_all, "names", basename(files_all))
-    dt <- rbindlist(pbmclapply(files_all, func_at,w=w,y=y, mc.cores = 3))
+    dt <- rbindlist(pbmclapply(files_all, func_at,w=w,y=y, mc.cores = 16))
     toc()
 
     fname <- paste0(datadrive_dir,"at",mm,"/prism_county_at",mm,"_",y)

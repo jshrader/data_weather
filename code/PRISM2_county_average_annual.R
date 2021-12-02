@@ -82,8 +82,7 @@ for(w in c("ppt","tmax","tmin","vpdmax","vpdmin")){
     # Unzip all the files to a common holding bay
     setwd(paste0(datadrive_dir,w,"/zip"))
     #setwd(paste0(datadrive_dir,"test"))
-    system(paste0("cd ",getwd(), " && unzip -o '*",y,"0101*.zip' -d ../../hold"),ignore.stdout=TRUE)
-    
+    system(paste0("cd ",getwd(), " && unzip -o '*",y,"*.zip' -d ../../hold"),ignore.stdout=TRUE)
     # List of files to process
     files_all <- list.files(path=paste0(datadrive_dir,"hold"),pattern=paste0(w,".*bil$"),full.names=TRUE)
     #files_all <- files_all[1:10]
