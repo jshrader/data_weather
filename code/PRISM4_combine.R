@@ -42,8 +42,14 @@ dt_m[,date:=d]
 dt_m[,d:=NULL]
 dt_m <- unique(dt_m)
 
+## We need to add some quality control here -- compare to known values, compare to a well vetted reference set, etc.
+cor(dt_m$ppt_area, dt_m$ppt_pop)
+cor(dt_m$tmax_area, dt_m$tmin_pop)
+cor(dt_m$atmax_area, dt_m$tmax_area, use='pairwise.complete.obs')
+
 # Output the file that you need
 # For forecast-mortality project: 2004 to the present
 dt_out <- dt_m[date>=ymd("2004-01-01")]
 proj_dir <- paste0(dir,'projects/active/Weather_Forecasts_and_Mortality/Data/')
-write_dta(dt_out,file=paste0(proj_dir,"weather/prism_2004_2020.dta"),convert.factors="string")
+write_dta(data=dt_out,path=paste0(proj_dir,"weather/prism_2004_2020.dta"))
+# EOF
