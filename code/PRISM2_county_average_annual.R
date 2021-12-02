@@ -72,11 +72,11 @@ func <- function(file_name,w,y){
 #for(w in c("tdmean")){
 for(w in c("ppt","tmax","tmin","vpdmax","vpdmin")){
   tic(w)
-  for(y in 1981:2017){
+  for(y in 1981:2020){
     # Unzip all the files to a common holding bay
-    setwd(paste0(datadrive_dir,w,"/",y,"/"))
+    setwd(paste0(datadrive_dir,w,"/zip"))
     #setwd(paste0(datadrive_dir,"test"))
-    system(paste("cd",getwd(), "&& unzip -o '*.zip' -d ../../hold"),ignore.stdout=TRUE)
+    system(paste0("cd ",getwd(), " && unzip -o '*",y,"0101*.zip' -d ../../hold"),ignore.stdout=TRUE)
     
     # List of files to process
     files_all <- list.files(path=paste0(datadrive_dir,"hold"),pattern=paste0(w,".*bil$"),full.names=TRUE)
@@ -84,7 +84,7 @@ for(w in c("ppt","tmax","tmin","vpdmax","vpdmin")){
     
     tic(y)
     setattr(files_all, "names", basename(files_all))
-    dt <- rbindlist(mclapply(files_all, func,w=w,y=y, mc.cores = 3))
+    dt <- rbindlist(mclapply(files_all, func,w=w,y=y, mc.cores = 16))
     #print("Saving")
     fname <- paste0(datadrive_dir,w,"/prism_county_",w,"_",y)
     saveRDS(dt,paste0(fname,'.rds'))
