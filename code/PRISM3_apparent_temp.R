@@ -4,6 +4,8 @@
 ## program than "prism_county_average_annual.R" because I wanted to maintain
 ## the simplicity of that program. The trade-off is that this program will
 ## perform some redundant operations like unzipping and reading daily files.
+## Eventually, we want to make the redundant operations into functions that
+## can be called by both programs.
 ##
 ## Jeff Shrader
 ## First: 2018-11-29
@@ -13,7 +15,8 @@ rm(list = ls())
 ## Debug switch
 debug <- FALSE
 # Packages
-packages <- c("stringr","raster","readstata13","parallel","lubridate","data.table","tictoc","weathermetrics","pbmcapply")
+packages <- c("stringr","raster","readstata13","parallel","lubridate","data.table",
+  "tictoc","weathermetrics","pbmcapply")
 new_packages <- packages[!(packages %in% installed.packages()[,"Package"])]
 if(length(new_packages)) install.packages(new_packages)
 lapply(packages, library, character.only = TRUE)
@@ -96,6 +99,7 @@ func_at <- function(file_name,w,y){
   weather_with_county <- merge(cell_member_county,wp,by="cell")
   weather_with_county[,ID:=NULL]
   weather_with_county[,cell:=NULL]
+  weather_with_county[, value:=NULL]
   weather_with_county_pop <- merge(den,weather_with_county,by=c("x","y"))
   weather_with_county[,x:=NULL]
   weather_with_county[,y:=NULL]
@@ -103,22 +107,26 @@ func_at <- function(file_name,w,y){
   weather_with_county_pop[,y:=NULL]
   
   # Simplify the names
-  outnames <- c("state_fips","county_fips",paste(at_name,"area",sep="_"))
+  outnames <- c("coverage_fraction","state_fips","county_fips",paste(at_name,"area",sep="_"))
   names(weather_with_county) <- outnames
-  outnames <- c("pop","state_fips","county_fips",paste(at_name,"pop",sep="_"))
+  outnames <- c("coverage_fraction","pop","state_fips","county_fips",paste(at_name,"pop",sep="_"))
   names(weather_with_county_pop) <- outnames
+  # Make combined weights for the pop-by-coverage weighting
+  weather_with_county_pop[, pop:=pop*coverage_fraction]
+  weather_with_county_pop[, coverage_fraction:=NULL]
   
   ## Average the raster inside each county, area-weighted (implicit) and weighted by population
-  avg_weather <- weather_with_county[,lapply(.SD, mean, na.rm=TRUE),by=c("state_fips","county_fips")]
+  avg_weather <- weather_with_county[,lapply(.SD, weighted.mean,w=coverage_fraction, na.rm=TRUE),by=c("state_fips","county_fips")]
   pop_avg_weather <- weather_with_county_pop[,lapply(.SD, weighted.mean,w=pop, na.rm=TRUE),by=c("state_fips","county_fips")]
   pop_avg_weather[,pop:=NULL]
+  avg_weather[, coverage_fraction:=NULL]
   
   ## Merge it all together and export
   wo <- merge(avg_weather,pop_avg_weather,by=c("state_fips","county_fips"))
   wo[,date:=date]
 }
 
-for(y in 1998:2017){
+for(y in 1998:2020){
   tic(y)
   ww <- c("tmax","tmin")
   for(w in ww){
