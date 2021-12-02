@@ -9,7 +9,8 @@ rm(list = ls())
 debug <- FALSE
 options(echo=TRUE)
 ptm_total <- proc.time()
-packages <- c("sp","rgeos","stringr","rgdal","raster","parallel","colorRamps","lubridate","data.table","tictoc")
+packages <- c("sp","rgeos","stringr","rgdal","raster","parallel","colorRamps","lubridate",
+  "data.table","tictoc",'exactextractr')
 new_packages <- packages[!(packages %in% installed.packages()[,"Package"])]
 if(length(new_packages)) install.packages(new_packages)
 lapply(packages, library, character.only = TRUE)
@@ -43,7 +44,7 @@ names(county_fips) <- c("state_fips","county_fips","ID")
 ## Baseline population data
 pop_temp <- raster(paste0(dir,"data/population_gridded_ciesin/usgrid_data_2010/uspop10.tif"))
 # Bring in representative weather file
-setwd(paste0(datadrive_dir,"ppt/2000/"))
+setwd(paste0(datadrive_dir,"ppt/zip/"))
 f <- "PRISM_ppt_stable_4kmD2_20000101_bil.zip"
 unzip(f,exdir="../tmp")
 weather <- raster("../tmp/PRISM_ppt_stable_4kmD2_20000101_bil.bil")
@@ -66,9 +67,8 @@ den <- den0[is.na(uspop10)==FALSE,]
 ## Get the county membership and population weight for each
 ## PRISM grid point (NOTE: this requires that the PRISM grid
 ## is stable over the full history).
-cell_member <- as.data.table(extract(weather, county, cellnumbers=TRUE, df=TRUE))
-names(cell_member) <- c("ID","cell","x")
-cell_member[,x:=NULL]
+cell_member <- rbindlist(exact_extract(weather, county, include_cell=TRUE), idcol="ID")
+cell_member[,value:=NULL]
 ## Merge area_weather with county_fips to get county membership of each grid cell
 cell_member_county <- merge(cell_member,county_fips,by=c("ID"))
 
@@ -79,5 +79,6 @@ saveRDS(den,paste0(datadrive_dir,'prism_grid_population.rds'))
 
 # Clean up
 # Delete the temporary weather file used for reference grid
-setwd(paste0(datadrive_dir,"ppt/2000/"))
+setwd(paste0(datadrive_dir,"ppt/zip/"))
 unlink("../tmp",recursive=TRUE)
+# EOF
