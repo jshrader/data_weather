@@ -66,7 +66,7 @@ func_at <- function(file_name,w,y){
   m_or_m <- substr(w,2,4)
   vpd_name <- paste0("vpd",m_or_m)
   at_name <- paste0("at",m_or_m)
-  vpd_file <- paste0(datadrive_dir,"vpd_hold/PRISM_vpd",m_or_m,"_stable_4kmD1_",date,"_bil.bil")
+  vpd_file <- paste0(datadrive_dir,"vpd_hold/PRISM_vpd",m_or_m,"_stable_4kmD2_",date,"_bil.bil")
   vpd1 <- raster(vpd_file)
   vpd <- as.data.table(as.data.frame(vpd1,xy=TRUE))
   vpd[,cell:=1:.N]
@@ -132,7 +132,7 @@ func_at <- function(file_name,w,y){
   wo[,date:=date]
 }
 
-for(y in 1998:2020){
+for(y in 2004:2020){
   tic(y)
   ww <- c("tmax","tmin")
   for(w in ww){
@@ -166,3 +166,4 @@ for(y in 1998:2020){
   toc()
 }
 
+# EOF
