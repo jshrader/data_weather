@@ -2,7 +2,7 @@
 ##
 ## Jeff Shrader
 ## First: 2016-7-15
-## Latest: Time-stamp: "2021-11-24 13:07:08 jgs"
+## Latest: Time-stamp: "2021-12-02 09:40:36 jgs"
 ##
 ## Citation
 ## The journal article describing GHCN-Daily is:
