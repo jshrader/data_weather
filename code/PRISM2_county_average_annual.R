@@ -52,7 +52,8 @@ func <- function(file_name,w,y){
   weather_with_county_pop[,y:=NULL]
     
   ## Grab the date
-  date <- str_match(names(weather_with_county)[4],"\\d{8}")
+  date <- str_match(file_name,"\\d{8}")
+  #date <- str_match(names(weather_with_county)[4],"\\d{8}")
   # Simplify the names
   outnames <- c("coverage_fraction","state_fips","county_fips",paste(w,"area",sep="_"))
   names(weather_with_county) <- outnames
@@ -73,9 +74,8 @@ func <- function(file_name,w,y){
   wo[,date:=date]
 }
 
-#w <-"ppt"
-#y <- 2004
-#for(w in c("tdmean")){
+# Loop through all weather variables and years, producing annual .rds files that can be merged
+# as needed for your project.
 for(w in c("ppt","tmax","tmin","vpdmax","vpdmin")){
   tic(w)
   for(y in 1981:2020){
@@ -104,3 +104,4 @@ for(w in c("ppt","tmax","tmin","vpdmax","vpdmin")){
   toc()
 }
 
+# EOF
