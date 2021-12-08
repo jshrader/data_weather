@@ -4,9 +4,6 @@
 ## Code by Jeff Shrader
 ## 2021-05-13
 ##
-## To do:
-## . Population or other weighting.
-##
 ## Sources:
 ## Berkeley Earth
 ## http://berkeleyearth.org/data/
@@ -17,12 +14,9 @@
 
 # Preliminaries -----------------------------------------------------------
 rm(list = ls())
-packages <- c('sp','rgeos','grid','sf','reticulate',
+pacman::p_load('sp','rgeos','grid','sf','reticulate',
               'stringr','rgdal','raster','maptools','dplyr',
               'parallel','lubridate','data.table','tictoc','pbmcapply','haven')
-new_packages <- packages[!(packages %in% installed.packages()[,'Package'])]
-if(length(new_packages)) install.packages(new_packages)
-lapply(packages, library, character.only = TRUE)
 
 # Define Directories  -------------------------------------------------------
 # Many of these might be the same thing depending on your environment
@@ -30,6 +24,7 @@ lapply(packages, library, character.only = TRUE)
 base_dir <- "~/Dropbox/research/projects/active/feeding_the_future/"
 # data directory
 data_dir <- '/media/jgs/datadrive/data/weather/berkeley_earth/'
+pop_dir <- '/media/jgs/datadrive/data/hyde/baseline/zip/'
 # Place where you want maps (for debugging and data checking) to go
 graph_dir <- paste0(base_dir, "output/graph/data_creation/")
 # Place where output data should go
@@ -54,7 +49,12 @@ crs <- crs(temp_sp)
 res <- res(temp_sp)
 years <- seq(1790,2010, by=10)
 pop_frame <- function(year){
-  pop <- raster(paste0(base_dir,"data/population_grids/USA_HistoricalPopulationDataset/pop_m4_",y,"/w001001.adf"))
+  pop <- raster(paste0(pop_dir,year,"AD_pop/popc_",year,"AD.asc"))
+  # raster is eating the crs of the HYDE dataset, but luckily it is the same
+  # as the BE data
+  crs(pop) <- crs
+  # If you are working 1790 to present, you have more options for pop grids
+  #pop <- raster(paste0(base_dir,"data/population_grids/USA_HistoricalPopulationDataset/pop_m4_",y,"/w001001.adf"))
   pop <- projectRaster(pop,temp_sp, res, crs, method = 'bilinear')
   pop <- resample(pop,temp_sp,method="bilinear")
   den <- as.data.table(as.data.frame(pop,xy=TRUE))
@@ -130,15 +130,20 @@ temp_long <- temp_long %>%
 #}
 
 ## Day bins (Deschenes and Greenstone style)
-bin_bounds <- seq(0, 25, by=5)
-temp_long[, tbin0:=(tavg<0)*1]
+bin_bounds <- seq(0, 30, by=5)
+b <- bin_bounds[1]
+b_name <- ifelse(b>=0, as.character(b), paste0("n",as.character(abs(b))))
+temp_long[, paste0("tbin_le_",b_name):=(tavg<bin_bounds[1])*1]
 for(b in bin_bounds){
-  temp_long[, paste0("tbin_",b):=(tavg>=b & tavg<(b+5))*1]
+  b_name <- ifelse(b>=0, as.character(b), paste0("n",as.character(abs(b))))
+  if (b == bin_bounds[length(bin_bounds)]){
+    temp_long[, paste0("tbin_",b_name):=(tavg>=b)*1]
+  } else {
+    temp_long[, paste0("tbin_",b_name):=(tavg>=b & tavg<(b+5))*1]  
+  }
 }
-temp_long[, tbin_30:=(tavg>=30)*1]
+temp_long[is.na(popLevel), popLevel:=0]
 
-##### TO DO:
-# 1. calculate weighted averages where we weight by both population and cell overlap fraction
 vars <- c("tavg",grep(pattern="tbin", names(temp_long), value=TRUE))
 ## Area Average
 annual_area <- temp_long[, lapply(.SD, weighted.mean, w=weight, na.rm=TRUE), by = list(state_fips, name, year), .SDcols=vars]
