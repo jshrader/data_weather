@@ -10,7 +10,7 @@
 # To run this code:
 # Install cdsapi ('pip install cdsapi' should do it)
 # Make sure you are registered to use the Copernicus API: https://cds.climate.copernicus.eu/api-how-to
-# Exit the variables 1 through 6 below
+# Edit the variables 1 through 6 below
 
 # Preliminaries
 import os
