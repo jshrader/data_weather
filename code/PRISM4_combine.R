@@ -47,7 +47,9 @@ cor(dt_m$atmax_area, dt_m$tmax_area, use='pairwise.complete.obs')
 # Output the file that you need
 # For forecast-mortality project: 2004 to the present
 dt_out <- dt_m[date>=ymd("2004-01-01")]
-proj_dir <- paste0(dir,'projects/active/Weather_Forecasts_and_Mortality/Data/')
-write_dta(data=dt_out,path=paste0(proj_dir,"weather/prism_2004_2020.dta"))
+saveRDS(dt_out, paste0(datadrive_dir,"prism_2004_2020.rds"))
+# This is what I used to create the PRISM data for the mortality-forecast project
+#proj_dir <- paste0(dir,'projects/active/Weather_Forecasts_and_Mortality/Data/')
+#write_dta(data=dt_out,path=paste0(proj_dir,"weather/prism_2004_2020.dta"))
 
 # EOF
