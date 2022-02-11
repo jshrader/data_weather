@@ -11,11 +11,12 @@ use File::chdir;
 # Get the 1981 to present data
 # 'ppt',
 my $day; 
-my @clim_var = ('tmax','tmin','atmax','atmin','tdmean','tmean','vpdmax','vpdmin'); 
+#my @clim_var = ('ppt','tmax','tmin','atmax','atmin','tdmean','tmean','vpdmax','vpdmin');
+my @clim_var = ('ppt'); 
 my $base_url = 'http://services.nacse.org/prism/data/public/4km'; 
-my $stop = DateTime->new( day => 31, month => 12, year => 2020 );
+my $stop = DateTime->new( day => 31, month => 12, year => 2021 );
 for my $var (@clim_var){
-    my $start = DateTime->new( day => 1, month => 1, year => 1981 ); 
+    my $start = DateTime->new( day => 1, month => 1, year => 2021 ); 
     while($start <= $stop) { 
         $day = $start->strftime('%Y%m%d');  #place date in proper format
         chdir("/media/jgs/datadrive/data/weather/prism/prism_daily/$var/zip/") or die "$!";

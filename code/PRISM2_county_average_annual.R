@@ -78,7 +78,8 @@ func <- function(file_name,w,y){
 # as needed for your project.
 for(w in c("ppt","tmax","tmin","vpdmax","vpdmin")){
   tic(w)
-  for(y in 1981:2020){
+  # Earliest start is 1981
+  for(y in 2021:2021){
     # Unzip all the files to a common holding bay
     setwd(paste0(datadrive_dir,w,"/zip"))
     #setwd(paste0(datadrive_dir,"test"))
