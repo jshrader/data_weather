@@ -36,7 +36,7 @@ dataset_name = 'reanalysis-era5-single-levels'
 #dataset_name = 'reanalysis-era5-land'
 ## 6. If you want to download ERA5 (not land), then you need to specify
 #     what product types you want. Options are 'ensemble_mean', 'ensemble_members', 'ensemble_spread', 'reanalysis'
-ptypes = ['ensemble_spread',]
+ptypes = ['reanalysis',]
 
 ## Everything below here should run just fine without edits
 # Only make changes if you want to download a subset of months, subset of days in month,
@@ -66,6 +66,10 @@ if loc_suff is 'india':
     area_box = [36.5, 66.7, 5.3, 103.2,]
 elif loc_suff is 'mexico':
     area_box = [33, -118, 14, -86,]
+elif loc_suff is 'conus':
+    area_box = [50, -126, 23, -66,]
+elif loc_suff == 'ghana':
+    area_box = [11.73,-4.71,3.81,1.71,]
 
 # Change Directory and create folders (if needed)
 os.chdir(directory)
