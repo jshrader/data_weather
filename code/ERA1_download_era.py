@@ -19,7 +19,8 @@ import re
 
 ## Stuff to change to fit what you want
 ## 1. Weather fields 
-variables = ['2m_temperature', 'total_precipitation']
+#variables = ['2m_temperature', 'total_precipitation']
+variables = ['total_precipitation']
 ## 2. Years
 #     Be careful here. The top of the range should be 1 more than you want because 
 #     Python is weird like that. You can go back to 1979.
@@ -98,7 +99,7 @@ c = cdsapi.Client()
 for i in variables:
     for j in ptypes:
         # Generate API call set
-        if data_prefix is "era5":
+        if data_prefix == "era5":
             ptype = {'product_type': j}
         folder = directory + i + "_" + j + "_" + loc_suff
         os.chdir(folder)
@@ -139,7 +140,7 @@ for i in variables:
                     ],
                     'area': area_box,
                 }
-                if data_prefix is "era5":
+                if data_prefix == "era5":
                      call_set.update(ptype)
                 if exists:
                     print('File already exists')
