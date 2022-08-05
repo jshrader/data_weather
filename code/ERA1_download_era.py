@@ -23,10 +23,10 @@ variables = ['2m_temperature', 'total_precipitation']
 ## 2. Years
 #     Be careful here. The top of the range should be 1 more than you want because 
 #     Python is weird like that. You can go back to 1979.
-years = [str(x) for x in range(1990,2020)]
+years = [str(x) for x in range(2005,2023)]
 ## 3. Suffix you want to put on output files (like the country name). This is totally
 #     up to you and not part of the API call
-loc_suff = 'india'
+loc_suff = 'world'
 ## 4. Directory where you want to save files
 directory = '/media/jgs/datadrive/data/weather/ecmwf/era5/'
 ## 5. ERA5 or ERA5-land?
@@ -62,14 +62,16 @@ months = ['01','02','03',
 # [50, -126, 23, -66,]
 # Mexico
 # [33, -118, 14, -86,]
-if loc_suff is 'india':
+if loc_suff == 'india':
     area_box = [36.5, 66.7, 5.3, 103.2,]
-elif loc_suff is 'mexico':
+elif loc_suff == 'mexico':
     area_box = [33, -118, 14, -86,]
-elif loc_suff is 'conus':
+elif loc_suff == 'conus':
     area_box = [50, -126, 23, -66,]
 elif loc_suff == 'ghana':
     area_box = [11.73,-4.71,3.81,1.71,]
+elif loc_suff == 'world':
+    area_box = [90, -180, -90, 180,]
 
 # Change Directory and create folders (if needed)
 os.chdir(directory)
@@ -138,7 +140,7 @@ for i in variables:
                     'area': area_box,
                 }
                 if data_prefix is "era5":
-                    call_set.update(ptype)
+                     call_set.update(ptype)
                 if exists:
                     print('File already exists')
                 else:
