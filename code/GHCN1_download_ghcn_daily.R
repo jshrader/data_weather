@@ -5,13 +5,13 @@
 ##
 ## Jeff Shrader
 ## 2016/7/23
-## Time-stamp: "2021-11-24 13:03:26 jgs"
+## Time-stamp: "2022-06-23 13:55:57 jgs"
 
 ## Set options
 #begin_year <- 1950
 #end_year <- 1989
 begin_year <- 1950
-end_year <- 2020
+end_year <- 2021
 station_list <- TRUE
 
 external_dir <- "/media/jgs/datadrive/data/weather/ghcn/daily/"
@@ -150,7 +150,7 @@ for(y in seq(begin_year,end_year,by=1)){
   names(outputs) <- c("file","status")
   ## Write the wget calls
   outputs[i, file:=y]
-  wget <- paste0("wget -N -nc --wait=1 -P ", paste0(external_dir,"raw/"), " ftp://ftp.ncdc.noaa.gov/pub/data/ghcn/daily/by_year/",
+  wget <- paste0("wget -nc --wait=1 -P ", paste0(external_dir,"raw/"), " ftp://ftp.ncdc.noaa.gov/pub/data/ghcn/daily/by_year/",
     y, ".csv.gz")
   outputs[i, status:=try(system(wget, intern=FALSE, ignore.stderr=TRUE))]
 }
