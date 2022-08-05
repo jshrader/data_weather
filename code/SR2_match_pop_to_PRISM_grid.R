@@ -28,6 +28,7 @@ if(Sys.info()["sysname"]=="Linux"){
 
 # Import Link FIPS Code ---------------------------------------------------
 setwd(dir)
+# This file is created by Wolfram, and it is not stated on his website what shapefile is used for the counties
 county_fips <- as.data.table(read_dta('linkGridnumberFIPS.dta'))
 county_fips <- remove_labels(county_fips)
 
