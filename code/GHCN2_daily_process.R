@@ -85,7 +85,7 @@ getwd()
 ##files <- list.files(path=".", pattern=file)
 #for(i in 1:length(files)){
 #    file <- files
-    # Parellel version
+# Parallel version
 func <- function(i, file=files){
     cat(paste("Starting ",file[i],"\n"))
     system(paste0("gunzip ",external_dir,"raw/",file[i],".csv.gz"), intern = FALSE, ignore.stderr = FALSE)
@@ -203,13 +203,18 @@ func <- function(i, file=files){
     # This is equivalent to 
     #felm(tavg ~ lag(tavg, k=1) | id, data=data_mort)
 
-    ## Calculate temperature bins
+    ## Pre-calculate the nonlinear transformations of the data a la Schlenker
+    # and Roberts (2009), D&G (2011), etc.
+    # Temperature bins
     bin_int <- (seq(from=10, to=90, by=10) - 32)*(5/9)
     data_mort_fill[, c(paste0("tbin",1)):=ifelse(tavg<bin_int[1], 1, 0)]
     for(k in 2:9){
       data_mort_fill[, c(paste0("tbin",k)):=ifelse(tavg>=bin_int[(k-1)] & tavg<bin_int[(k)], 1, 0)]
     }
     data_mort_fill[, c(paste0("tbin",10)):=ifelse(tavg>=bin_int[9], 1, 0)]
+    # S&R-type splines
+    # Polynomials
+    
     
     ## Do inverse distance weighting
     # Get distance between all stations and centroids

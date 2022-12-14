@@ -1,10 +1,12 @@
 ## R code to calculate average weather in county from PRISM daily files
 ##
-## Then, to run the code, you can use Rscript:
-##  Rscript county_weather.R
+## As of 2020, Rscript fails becuase of an Rcpp issue (new version should resolve the problem)
+## To run the code, you can use Rscript:
+##  Rscript ~/Dropbox/research/data/weather/code/PRISM2_county_average_annual.R
 ##
 ## Jeff Shrader
 ## First: 2018-6-4
+## Latest: 2022-12-13
 
 ## Cites
 ## for gridded population data:
@@ -18,10 +20,7 @@ rm(list = ls())
 ## Debug switch
 debug <- FALSE
 # Packages
-packages <- c("stringr","raster","readstata13","parallel","lubridate","data.table","tictoc")
-new_packages <- packages[!(packages %in% installed.packages()[,"Package"])]
-if(length(new_packages)) install.packages(new_packages)
-lapply(packages, library, character.only = TRUE)
+pacman::p_load(stringr,raster,readstata13,parallel,lubridate,data.table,tictoc)
 # Directories
 if(Sys.info()["nodename"]=="ALBATROSS"){
 } else {
@@ -30,45 +29,92 @@ if(Sys.info()["nodename"]=="ALBATROSS"){
   tmp_dir <- "~/tmp/"
 }
 
+## A total kludge, but as of 2021, rcpp is throwing a bunch of errors when I 
+# first load a raster. So I just need to load one raster here at the beginning, 
+# catch the error, then the later rasters will load without problem. 
+test <- raster("/media/jgs/datadrive/data/weather/prism/prism_daily/hold/PRISM_ppt_stable_4kmD2_19810101_bil.bil")
+test2 <- as.data.table(as.data.frame(test,xy=TRUE))
+
 ## Bring in the PRISM grid to county and population cross walks
 cell_member_county <- readRDS(paste0(datadrive_dir,'prism_grid_to_county.rds'))
-den <- readRDS(paste0(datadrive_dir,'prism_grid_population.rds'))
+#den <- readRDS(paste0(datadrive_dir,'prism_grid_population.rds'))
 
 ## Process each weather field for all PRISM files
 func <- function(file_name,w,y){
+  # Read in raster, merge the location information generated in PRISM1 code
   weather1 <- raster(file_name)
+  # If we are doing temperature, read in both tmax and tmin
+  if(w == "tmp"){
+    weather2 <- raster(str_replace(file_name,"tmax","tmin"))
+  }
   wp <- as.data.table(as.data.frame(weather1,xy=TRUE))
   wp[,cell:=1:.N]
-  
+  if(w == "tmp"){
+    wp2 <- as.data.table(as.data.frame(weather2,xy=TRUE))
+    wp <- merge(wp,wp2,by=c("x","y"))
+    names(wp)[c(3,5)] <- c("tmax","tmin")
+    wp[, tavg:=.5*(tmax+tmin)]
+  } else {
+    names(wp)[c(3)] <- w
+  }
   weather_with_county <- merge(cell_member_county,wp,by="cell")
-  weather_with_county[,ID:=NULL]
-  weather_with_county[,cell:=NULL]
-  # I thought this was dropped in PRISM1, but apparently not
-  weather_with_county[, value:=NULL]
-  weather_with_county_pop <- merge(den,weather_with_county,by=c("x","y"))
-  weather_with_county[,x:=NULL]
-  weather_with_county[,y:=NULL]
-  weather_with_county_pop[,x:=NULL]
-  weather_with_county_pop[,y:=NULL]
-    
+  weather_with_county[,c("ID","cell","x.x","x.y","y.y","y.x"):=NULL]
+
+  ## Calculate non-linear transformations
+  if(w == "tmp"){
+    ## Schlenker-Roberts GDD calculations
+    # We need min and max temperature for this.
+    # Bounds for GDD  
+    # Make sure that these are reasonable (like don't go above your highest max temp)
+    # This set of bounds is what Wolfram uses for US ag
+    #bounds <- c(0, 5, 8, 10, 12, 15, 20, 25, 29, 30, 31, 32, 33, 34)
+    # A smaller set but that includes more extreme heat values
+    #bounds <- c(0, 10, 20, 25, 30, 35, 40)
+    bounds <- c(0, 35)
+    for(b in bounds){
+      weather_with_county[tmax <= b, paste0("degday_",b):=0]
+      weather_with_county[b <= tmin, paste0("degday_",b):=tavg - b]
+      weather_with_county[(tmin < b) & (tmax > b), temp_sr:=acos((2*b - tmax - tmin)/(tmax - tmin))]
+      weather_with_county[(tmin < b) & (tmax > b), paste0("degday_",b):=((tavg - b)*temp_sr + (tmax - tmin)*sin(temp_sr)/2)/pi]
+      weather_with_county[, temp_sr:=NULL]
+      print(paste(b, "done."))
+    }
+    ## Splines
+    # NOTE! The bSpline call must exactly match the call used in PRISM1...R 
+    # or else you won't be able to get the correct predictions from the 
+    # aggregated data.
+    # The knots and boundary knots must both be specified for the spline basis 
+    # to be invariant to x.
+    k <- 15
+    sp <- bSpline(x=weather_with_county$tavg, knots=k,degree = 3, Boundary.knots=c(-10,40))
+    sp <- as.data.table(sp)
+    names(sp) <- paste0("tavg_s",colnames(sp))
+    weather_with_county <- cbind(weather_with_county,sp)
+    ## Polynomials
+    weather_with_county[, tavg_p2:=tavg^2]
+    weather_with_county[, tavg_p3:=tavg^3]
+    weather_with_county[, tavg_p4:=tavg^4]
+    weather_with_county[, tavg_p5:=tavg^5]
+  } else if(w == "ppt"){
+    weather_with_county[, ppt_bin:=if_else(ppt>.01,1,0)]
+  }
+
   ## Grab the date
   date <- str_match(file_name,"\\d{8}")
-  #date <- str_match(names(weather_with_county)[4],"\\d{8}")
-  # Simplify the names
-  outnames <- c("coverage_fraction","state_fips","county_fips",paste(w,"area",sep="_"))
-  names(weather_with_county) <- outnames
-  outnames <- c("pop","coverage_fraction","state_fips","county_fips",paste(w,"pop",sep="_"))
-  names(weather_with_county_pop) <- outnames
   # Make combined weights for the pop-by-coverage weighting
-  weather_with_county_pop[, pop:=pop*coverage_fraction]
-  weather_with_county_pop[, coverage_fraction:=NULL]
-  
+  weather_with_county[, pop2010:=pop2010*coverage_fraction]
   ## Average the raster inside each county, area-weighted (implicit) and weighted by population
   avg_weather <- weather_with_county[,lapply(.SD, weighted.mean,w=coverage_fraction, na.rm=TRUE),by=c("state_fips","county_fips")]
-  pop_avg_weather <- weather_with_county_pop[,lapply(.SD, weighted.mean,w=pop, na.rm=TRUE),by=c("state_fips","county_fips")]
-  pop_avg_weather[,pop:=NULL]
+  pop_avg_weather <- weather_with_county[,lapply(.SD, weighted.mean,w=pop2010, na.rm=TRUE),by=c("state_fips","county_fips")]
+  pop_avg_weather[,c("pop2010","coverage_fraction"):=NULL]
   avg_weather[, coverage_fraction:=NULL]
-  
+  # Rename
+  in_names <- names(avg_weather)[!names(avg_weather)%in%c("state_fips","county_fips","pop2010")]
+  out_names <- c(paste(in_names,"area",sep="_"))
+  setnames(avg_weather, in_names, out_names)
+  in_names <- names(pop_avg_weather)[!names(pop_avg_weather)%in%c("state_fips","county_fips","pop2010")]
+  out_names <- c(paste(in_names,"pop",sep="_"))
+  setnames(pop_avg_weather, in_names, out_names)
   ## Merge it all together and export
   wo <- merge(avg_weather,pop_avg_weather,by=c("state_fips","county_fips"))
   wo[,date:=date]
@@ -76,26 +122,37 @@ func <- function(file_name,w,y){
 
 # Loop through all weather variables and years, producing annual .rds files that can be merged
 # as needed for your project.
-for(w in c("ppt","tmax","tmin","vpdmax","vpdmin")){
+# "tmp","vpdmax","vpdmin"
+for(w in c("ppt")){
   tic(w)
   # Earliest start is 1981
-  for(y in 2021:2021){
+  for(y in 1981:2021){
+    if(w == "tmp"){
+      ws <- c("tmax")
+    } else {
+      ws <- w
+    }
     # Unzip all the files to a common holding bay
-    setwd(paste0(datadrive_dir,w,"/zip"))
-    #setwd(paste0(datadrive_dir,"test"))
+    setwd(paste0(datadrive_dir,ws,"/zip"))
     # The wildcard statement has some subtleties:
     # We are matching on year, but some years can also appear as days, so we need to include
     # the "_" before the year so that we only pick up values that match _<y>.
     system(paste0("cd ",getwd(), " && unzip -o '*_",y,"*.zip' -d ../../hold"),ignore.stdout=TRUE)
-    # List of files to process
-    files_all <- list.files(path=paste0(datadrive_dir,"hold"),pattern=paste0(w,".*bil$"),full.names=TRUE)
+    if(w == "tmp"){
+      setwd(paste0(datadrive_dir,"tmin","/zip"))
+      system(paste0("cd ",getwd(), " && unzip -o '*_",y,"*.zip' -d ../../hold"),ignore.stdout=TRUE)
+    }
+    files_all <- list.files(path=paste0(datadrive_dir,"hold"),pattern=paste0(ws,".*bil$"),full.names=TRUE)
     #files_all <- files_all[1:10]
-    
-    tic(y)
     setattr(files_all, "names", basename(files_all))
+    tic(y)
     dt <- rbindlist(mclapply(files_all, func,w=w,y=y, mc.cores = 16))
     #print("Saving")
     fname <- paste0(datadrive_dir,w,"/prism_county_",w,"_",y)
+    # File formats are frustrating. RDS is small but slow to read and write 
+    # because R only uses a single thread? DTA is kinda small, can be read in 
+    # Stata, but I don't always want to use Stata. CSV is fast to read and 
+    # write but big. Other formats like feather are great but more experimental.
     saveRDS(dt,paste0(fname,'.rds'))
     #write.dta13(wo,paste0(fname,'.dta'),convert.factors=c("string"))
     #fwrite(wo,paste0(fname,'.csv'))
