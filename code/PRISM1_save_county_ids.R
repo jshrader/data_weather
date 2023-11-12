@@ -9,16 +9,12 @@ rm(list = ls())
 debug <- FALSE
 options(echo=TRUE)
 ptm_total <- proc.time()
-packages <- c("sp","rgeos","stringr","rgdal","raster","parallel","colorRamps","lubridate",
-  "data.table","tictoc",'exactextractr')
-new_packages <- packages[!(packages %in% installed.packages()[,"Package"])]
-if(length(new_packages)) install.packages(new_packages)
-lapply(packages, library, character.only = TRUE)
-if(Sys.info()["nodename"]=="ALBATROSS"){
-} else {
-  dir <- '~/Dropbox/research/'
+pacman::p_load(sp,rgeos,stringr,rgdal,raster,parallel,colorRamps,lubridate,
+  data.table,tictoc,exactextractr)
+if(Sys.info()["nodename"]=="scrivener"){
+  dir <- "/home/jgs/Dropbox/research/"
   datadrive_dir <- paste0('/media/jgs/datadrive/data/weather/prism/prism_daily/')
-  tmp_dir <- "~/tmp/"
+} else {
 }
 map_dir <- paste0(dir,'data/maps/usa/county/')
 proj_dir <- paste0(dir,'projects/active/Weather_Forecasts_and_Mortality/Data/')
@@ -46,8 +42,8 @@ pop_temp <- raster(paste0(dir,"data/population_gridded_ciesin/usgrid_data_2010/u
 # Bring in representative weather file
 setwd(paste0(datadrive_dir,"tmax/zip/"))
 f <- "PRISM_tmax_stable_4kmD2_20000101_bil.zip"
-unzip(f,exdir="../tmp")
-weather <- raster("../tmp/PRISM_tmax_stable_4kmD2_20000101_bil.bil")
+unzip(f,exdir="../../metadata/tmp")
+weather <- raster("../../metadata/tmp/PRISM_tmax_stable_4kmD2_20000101_bil.bil")
 crs <- crs(weather)
 # pop1 <- projectRaster(pop_temp,crs=crs,res=res(weather),method="bilinear")
 pop0 <- projectRaster(pop_temp,crs=crs)
@@ -68,13 +64,6 @@ cell_member_county <- merge(cell_member,county_fips,by=c("ID"))
 cell_member_county <- merge(cell_member_county, den, by=c("cell"), all.x=TRUE)
 setnames(cell_member_county, "uspop10", "pop2010")
 cell_member_county[is.na(pop2010), pop2010:=0]
-## Save disaggregated spline basis for predictions
-wp <- as.data.frame(weather, xy=TRUE)
-k <- 15
-sp <- bSpline(x=wp[,3], knots=k,degree = 3, Boundary.knots=c(-10,40))
-temps <- seq(-10,40,by=.1)
-sp_temps <- predict(sp, temps)
-saveRDS(sp_temps, paste0(datadrive_dir,'prism_spline_basis_knot',k,'.rds'))
 
 if(debug==TRUE){
   pdf(paste0(proj_dir,"../Output/Figures/data_creation_notes/PRISM_and_population_grid.pdf"),width=7,height=5)

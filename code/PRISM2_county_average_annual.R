@@ -6,7 +6,7 @@
 ##
 ## Jeff Shrader
 ## First: 2018-6-4
-## Latest: 2022-12-13
+## Latest: 2023-01-13
 
 ## Cites
 ## for gridded population data:
@@ -20,24 +20,38 @@ rm(list = ls())
 ## Debug switch
 debug <- FALSE
 # Packages
-pacman::p_load(stringr,raster,readstata13,parallel,lubridate,data.table,tictoc)
+pacman::p_load(stringr,raster,parallel,lubridate,data.table,tictoc)
 # Directories
-if(Sys.info()["nodename"]=="ALBATROSS"){
+if(Sys.info()["nodename"]=="scrivener"){
+  # This is the path to the full data. If you want to set this to use the project-
+  # specific test data subset, direct it to <project dir>/data/prism
+  #datadrive_dir <- paste0('/media/jgs/datadrive/data/weather/prism/prism_daily/')
+  proj_dir <- '/home/jgs/Dropbox/research/projects/active/Construction/'
+  datadrive_dir <- paste0(proj_dir,'data/prism/')
 } else {
-  dir <- '~/Dropbox/research/'
-  datadrive_dir <- paste0('/media/jgs/datadrive/data/weather/prism/prism_daily/')
-  tmp_dir <- "~/tmp/"
 }
 
 ## A total kludge, but as of 2021, rcpp is throwing a bunch of errors when I 
 # first load a raster. So I just need to load one raster here at the beginning, 
 # catch the error, then the later rasters will load without problem. 
-test <- raster("/media/jgs/datadrive/data/weather/prism/prism_daily/hold/PRISM_ppt_stable_4kmD2_19810101_bil.bil")
+test <- raster(paste0(datadrive_dir,"kludge/PRISM_ppt_stable_4kmD2_19810101_bil.bil"))
 test2 <- as.data.table(as.data.frame(test,xy=TRUE))
+rm(test)
+rm(test2)
+
+## Save spline basis for predictions
+weather <- raster(paste0(datadrive_dir,"metadata/tmp/PRISM_tmax_stable_4kmD2_20000101_bil.bil"))
+wp <- as.data.frame(weather, xy=TRUE)
+k <- c(0,15,30)
+# WARNING: This spline call must match the one later in the code exactly!!!
+sp <- bSpline(x=wp[,3], knots=k,degree = 3, Boundary.knots=c(-10,40))
+temps <- seq(-10,40,by=.1)
+sp_temps <- predict(sp, temps)
+saveRDS(sp_temps, paste0(datadrive_dir,'metadata/prism_spline_basis.rds'))
+
 
 ## Bring in the PRISM grid to county and population cross walks
-cell_member_county <- readRDS(paste0(datadrive_dir,'prism_grid_to_county.rds'))
-#den <- readRDS(paste0(datadrive_dir,'prism_grid_population.rds'))
+cell_member_county <- readRDS(paste0(datadrive_dir,'metadata/prism_grid_to_county.rds'))
 
 ## Process each weather field for all PRISM files
 func <- function(file_name,w,y){
@@ -85,7 +99,9 @@ func <- function(file_name,w,y){
     # aggregated data.
     # The knots and boundary knots must both be specified for the spline basis 
     # to be invariant to x.
-    k <- 15
+    # Setting the boundary knots equal to internal knots imposes 0 slope on the 
+    # predictions beyond those boundaries. Be careful!
+    k <- c(0,15,30)
     sp <- bSpline(x=weather_with_county$tavg, knots=k,degree = 3, Boundary.knots=c(-10,40))
     sp <- as.data.table(sp)
     names(sp) <- paste0("tavg_s",colnames(sp))
@@ -96,7 +112,10 @@ func <- function(file_name,w,y){
     weather_with_county[, tavg_p4:=tavg^4]
     weather_with_county[, tavg_p5:=tavg^5]
   } else if(w == "ppt"){
-    weather_with_county[, ppt_bin:=if_else(ppt>.01,1,0)]
+    # NOAA defines chance of precip based on chance of >0.1 inches or 2.54 mm
+    # https://psl.noaa.gov/data/usclimate/glossary.html
+    weather_with_county[, ppt_bin:=if_else(ppt>2.54,1,0)]
+    weather_with_county[, ppt_p2:=ppt^2]
   }
 
   ## Grab the date
@@ -123,10 +142,11 @@ func <- function(file_name,w,y){
 # Loop through all weather variables and years, producing annual .rds files that can be merged
 # as needed for your project.
 # "tmp","vpdmax","vpdmin"
-for(w in c("ppt")){
+for(w in c("tmp","ppt")){
   tic(w)
-  # Earliest start is 1981
-  for(y in 1981:2021){
+  # Earliest start is 1981 in full data (unless we download older files) and 
+  # for shared data the range is 2017 to 2018
+  for(y in 2017:2018){
     if(w == "tmp"){
       ws <- c("tmax")
     } else {
@@ -154,6 +174,8 @@ for(w in c("ppt")){
     # Stata, but I don't always want to use Stata. CSV is fast to read and 
     # write but big. Other formats like feather are great but more experimental.
     saveRDS(dt,paste0(fname,'.rds'))
+    # I stopped using the following, and `haven` is the newer package now if 
+    # you really want to work with Stata.
     #write.dta13(wo,paste0(fname,'.dta'),convert.factors=c("string"))
     #fwrite(wo,paste0(fname,'.csv'))
     toc()
