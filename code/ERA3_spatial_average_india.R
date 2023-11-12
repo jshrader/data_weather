@@ -69,7 +69,7 @@ for (i in variables){
     varcols <- grep(pattern="era5land",x=names(temp),value=TRUE)
     # Convert to celscius
     if( i == "2m_temperature" | i == "2m_dewpoint_temperature"){
-      temp <- cbind(temp[, .(x,y)], temp[, .SD, .SDcols=varcols] - 272.15)
+      temp <- cbind(temp[, .(x,y)], temp[, .SD, .SDcols=varcols] - 273.15)
     }
     # Get cell numbers for merge. I would like to use x,y, but it taking forever
     # to do the relevant conversion.
