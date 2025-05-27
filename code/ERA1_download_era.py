@@ -19,15 +19,15 @@ import re
 
 ## Stuff to change to fit what you want
 ## 1. Weather fields 
-#variables = ['2m_temperature', 'total_precipitation']
-variables = ['total_precipitation']
+variables = ['2m_temperature', 'total_precipitation']
+#variables = ['total_precipitation']
 ## 2. Years
 #     Be careful here. The top of the range should be 1 more than you want because 
 #     Python is weird like that. You can go back to 1979.
-years = [str(x) for x in range(2005,2023)]
+years = [str(x) for x in range(2022,2025)]
 ## 3. Suffix you want to put on output files (like the country name). This is totally
 #     up to you and not part of the API call
-loc_suff = 'world'
+loc_suff = 'ghana'
 ## 4. Directory where you want to save files
 directory = '/media/jgs/datadrive/data/weather/ecmwf/era5/'
 ## 5. ERA5 or ERA5-land?
@@ -111,7 +111,9 @@ for i in variables:
                 print(path)
                 exists = os.path.isfile(path)
                 call_set = {
-                    'format': 'grib',
+                    "product_type": ["reanalysis"],
+                    "data_format": "grib",
+                    "download_format": "unarchived",
                     'variable': i,
                     'year': y,
                     'month': m,
@@ -141,7 +143,7 @@ for i in variables:
                     'area': area_box,
                 }
                 if data_prefix == "era5":
-                     call_set.update(ptype)
+                     c.retrieve(dataset_name,call_set,file)
                 if exists:
                     print('File already exists')
                 else:

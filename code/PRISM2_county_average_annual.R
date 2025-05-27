@@ -6,7 +6,7 @@
 ##
 ## Jeff Shrader
 ## First: 2018-6-4
-## Latest: 2023-01-13
+## Latest: 2024-10-06
 
 ## Cites
 ## for gridded population data:
@@ -20,14 +20,14 @@ rm(list = ls())
 ## Debug switch
 debug <- FALSE
 # Packages
-pacman::p_load(stringr,raster,parallel,lubridate,data.table,tictoc)
+pacman::p_load(stringr,raster,parallel,lubridate,data.table,tictoc,splines2)
 # Directories
 if(Sys.info()["nodename"]=="scrivener"){
   # This is the path to the full data. If you want to set this to use the project-
   # specific test data subset, direct it to <project dir>/data/prism
-  #datadrive_dir <- paste0('/media/jgs/datadrive/data/weather/prism/prism_daily/')
-  proj_dir <- '/home/jgs/Dropbox/research/projects/active/Construction/'
-  datadrive_dir <- paste0(proj_dir,'data/prism/')
+  datadrive_dir <- paste0('/media/jgs/datadrive/data/weather/prism/prism_daily/')
+  #proj_dir <- '/home/jgs/Dropbox/research/projects/active/Construction/'
+  #datadrive_dir <- paste0(proj_dir,'data/prism/')
 } else {
 }
 
@@ -141,12 +141,12 @@ func <- function(file_name,w,y){
 
 # Loop through all weather variables and years, producing annual .rds files that can be merged
 # as needed for your project.
-# "tmp","vpdmax","vpdmin"
-for(w in c("tmp","ppt")){
+# "tmp","ppt","vpdmax","vpdmin"
+for(w in c("tmp")){
   tic(w)
   # Earliest start is 1981 in full data (unless we download older files) and 
   # for shared data the range is 2017 to 2018
-  for(y in 2017:2018){
+  for(y in 1990:2021){
     if(w == "tmp"){
       ws <- c("tmax")
     } else {

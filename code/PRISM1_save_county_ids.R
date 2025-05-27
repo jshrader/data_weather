@@ -1,4 +1,6 @@
 ## R code to find county membership for each grid cell in PRISM.
+## This only needs to be run once for a single file. It can then be applied to 
+## all files. 
 ##
 ## Jeff Shrader
 ## First: 2018-11-29
