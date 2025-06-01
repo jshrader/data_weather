@@ -7,4 +7,5 @@
 *.csv
 *.dct
 Icon.#*
-spatial_weather/*
+spatial_weather/*
+code/log.txt
