@@ -17,11 +17,11 @@
 
 ## Preliminaries
 rm(list = ls())
-begin_year <- 1950
-end_year <- 2020
+begin_year <- 2021 #1950
+end_year <- 2024
 options(echo=TRUE)
 ptm_total <- proc.time()
-packages <- c("sp","rgeos","stringr","rgdal","raster","haven","data.table","readr","iotools","phylin","plm","lubridate","geosphere","collapse","tictoc","parallel","pbmcapply")
+packages <- c("sp","rgeos","stringr","raster","haven","data.table","readr","iotools","phylin","plm","lubridate","geosphere","collapse","tictoc","parallel","pbmcapply")
 new_packages <- packages[!(packages %in% installed.packages()[,"Package"])]
 if(length(new_packages)) install.packages(new_packages)
 invisible(lapply(packages, library, character.only = TRUE))
@@ -113,7 +113,7 @@ func <- function(i, file=files){
     data[element %in% c('TMAX','TMIN'),value:=value/10]
     setkey(data,id)
     data_full <- merge(data,st,by='id')
-    rm(data)
+    try(rm(data),silent = TRUE)
     data_out <- data_full[,.(mean(value,na.rm=TRUE), sum(is.na(value)==FALSE)),by="date,date_string,element,state_fips,county_fips"]
     names(data_out)[c(6,7)] <- c('value','num_obs')
     ##saveRDS(data_out, file=paste0(file[i],"_county.rds"))
@@ -146,11 +146,15 @@ func <- function(i, file=files){
     #test <- pdata.frame(data_mort, index=c("id","date"), replace.non.finite=T)
     #pdim(data_mort)
     
-    data_mort_fill <- data.table(make.pbalanced(data_mort, balance.type=c("fill"), index=c("idn","date")))
+    # In 2025, make.pbalanced() was causing the resulting dataset to be empty, 
+    # so I replaced this code with a data.table formula. It is crazy how much 
+    # faster the data.table version is as well!
+    #data_mort_fill <- data.table(make.pbalanced(data_mort, balance.type=c("fill"), index=c("idn","date")))
+    data_mort_fill <- setDT(data_mort, key = c("id", "date"))[CJ(id, date, unique=TRUE)]
     # Fill id
     id <- unique(data_mort[, .(id, idn)])
-    data_mort_fill[, id:=NULL]
-    data_mort_fill <- merge(data_mort_fill, id, by=c("idn"))
+    data_mort_fill[, idn:=NULL]
+    data_mort_fill <- merge(data_mort_fill, id, by=c("id"))
     data_mort_fill[, tavg_bu:=tavg]
     # Fill missing values
     # I don't know why panel data types in R are so fickle?!?!
@@ -315,7 +319,7 @@ func <- function(i, file=files){
 
 tic()
 i <- 1:length(files)
-dt <- pbmclapply(i, func, mc.cores = 4)
+dt <- pbmclapply(i, func, mc.cores = 3)
 toc()
 
 if(debug==TRUE){
