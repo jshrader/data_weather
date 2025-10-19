@@ -10,8 +10,8 @@
 ## Set options
 #begin_year <- 1950
 #end_year <- 1989
-begin_year <- 1950
-end_year <- 2021
+begin_year <- 2021
+end_year <- 2024
 station_list <- TRUE
 
 external_dir <- "/media/jgs/datadrive/data/weather/ghcn/daily/"
@@ -24,7 +24,7 @@ tz_dir <- paste0(map_dir,'time_zone/tz_us/')
 ## Initialize and load packages
 options(echo=TRUE)
 ptm <- proc.time()
-packages <- c("sp","rgeos","rgdal","spdep","raster","fields","MBA","data.table","readr","geosphere")
+packages <- c("sp","rgeos","spdep","raster","fields","MBA","data.table","readr","geosphere")
 new_packages <- packages[!(packages %in% installed.packages()[,"Package"])]
 if(length(new_packages)) install.packages(new_packages)
 invisible(lapply(packages, library, character.only = TRUE))
