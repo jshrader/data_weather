@@ -209,4 +209,28 @@ for (var in config$variables) {
 
 close(pb)
 
+# -----------------------------
+# Report missing dates per variable
+# -----------------------------
+all_dates <- seq.Date(config$start_date, config$end_date, by = "day")
+for (var in config$variables) {
+  out_dir <- file.path(config$data_root, "prism_daily", var, "zip")
+  files <- list.files(out_dir, pattern = "\\.zip$", full.names = FALSE)
+  date_matches <- regmatches(files, regexpr("\\d{8}", files))
+  file_dates <- as.Date(date_matches, format = "%Y%m%d")
+  file_dates <- file_dates[!is.na(file_dates)]
+
+  missing_dates <- setdiff(all_dates, file_dates)
+  message(
+    sprintf(
+      "Variable %s: %d missing of %d days",
+      var, length(missing_dates), length(all_dates)
+    )
+  )
+  if (length(missing_dates) > 0) {
+    message("First missing date: ", format(min(missing_dates), "%Y-%m-%d"))
+    message("Last missing date:  ", format(max(missing_dates), "%Y-%m-%d"))
+  }
+}
+
 # EOF
