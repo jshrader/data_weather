@@ -1,0 +1,2 @@
+2026-03-12 13:47:36 GET  https://services.nacse.org/prism/data/get/us/4km/ppt/20240101  ->  /home/jgs/Dropbox/research/data/weather/data/prism/remote/prism_daily/ppt/zip/prism_ppt_us_4km_20240101.zip 
+2026-03-12 13:47:38 GET  https://services.nacse.org/prism/data/get/us/4km/ppt/20240102  ->  /home/jgs/Dropbox/research/data/weather/data/prism/remote/prism_daily/ppt/zip/prism_ppt_us_4km_20240102.zip 

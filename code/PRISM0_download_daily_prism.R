@@ -8,11 +8,11 @@ rm(list = ls())
 # Configuration (edit as needed)
 # -----------------------------
 config <- list(
-  variables    = c("ppt"),           # ppt, tmin, tmax, tmean, tdmean, vpdmin, vpdmax
+  variables    = c("ppt", "tmax", "tmin"), # ppt, tmin, tmax, tmean, tdmean, vpdmin, vpdmax
   region       = "us",                # us, ak, hi, pr (only us currently available)
   resolution   = "4km",               # 4km, 800m, 400m (400m not yet implemented)
-  start_date   = as.Date("2024-01-01"),
-  end_date     = as.Date("2024-01-02"),
+  start_date   = "1981-01-01",
+  end_date     = "2025-12-31",
   format       = NULL,                # NULL for COG default, or "nc", "asc", "bil"
   dataset_type = NULL,                # use "lt" for 800m monthly LT; not used for daily
   sleep_sec    = 1,
@@ -44,6 +44,12 @@ log_msg <- function(..., log_file) {
 }
 
 build_url <- function(var, date, cfg) {
+  if (!inherits(date, "Date")) {
+    date <- as.Date(date)
+  }
+  if (is.na(date)) {
+    stop("Invalid date passed to build_url")
+  }
   date_str <- format(date, "%Y%m%d")
   url <- sprintf("https://services.nacse.org/prism/data/get/%s/%s/%s/%s",
     cfg$region, cfg$resolution, var, date_str
@@ -58,6 +64,12 @@ build_url <- function(var, date, cfg) {
 }
 
 build_filename <- function(var, date, cfg) {
+  if (!inherits(date, "Date")) {
+    date <- as.Date(date)
+  }
+  if (is.na(date)) {
+    stop("Invalid date passed to build_filename")
+  }
   date_str <- format(date, "%Y%m%d")
   sprintf("prism_%s_%s_%s_%s.zip", var, cfg$region, cfg$resolution, date_str)
 }
@@ -67,6 +79,16 @@ build_filename <- function(var, date, cfg) {
 # -----------------------------
 if (is.na(config$data_root)) {
   config$data_root <- file.path(get_project_root(), "data", "prism", "remote")
+}
+
+if (!inherits(config$start_date, "Date")) {
+  config$start_date <- as.Date(config$start_date)
+}
+if (!inherits(config$end_date, "Date")) {
+  config$end_date <- as.Date(config$end_date)
+}
+if (is.na(config$start_date) || is.na(config$end_date)) {
+  stop("start_date and end_date must be coercible to Date (e.g., \"YYYY-MM-DD\")")
 }
 
 if (config$end_date < config$start_date) {
