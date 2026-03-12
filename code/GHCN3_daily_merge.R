@@ -26,7 +26,7 @@ if(Sys.info()["nodename"]=="ALBATROSS"){
 file_list <- list.files(datadrive_dir,pattern="\\d{4}.county.dta",full.names=TRUE)
 tic()
 setattr(file_list, "names", basename(file_list))
-dt <- rbindlist(pbmclapply(file_list, read_dta, mc.cores = 16))
+dt <- rbindlist(pbmclapply(file_list, read_dta, mc.cores = 16), fill=TRUE)
 toc()
 
 ## Reshape and clean up fields
