@@ -52,20 +52,22 @@ download_with_retry <- function(url, destfile, cfg, log_file) {
   repeat {
     attempt <- attempt + 1
     status <- tryCatch(
-      download.file(
-        url,
-        destfile = destfile,
-        mode = "wb",
-        quiet = TRUE,
-        method = cfg$download_method
+      withCallingHandlers(
+        download.file(
+          url,
+          destfile = destfile,
+          mode = "wb",
+          quiet = TRUE,
+          method = cfg$download_method
+        ),
+        warning = function(w) {
+          log_msg("WARN  ", url, " :: ", conditionMessage(w), log_file = log_file)
+          invokeRestart("muffleWarning")
+        }
       ),
       error = function(e) {
         log_msg("ERROR ", url, " :: ", conditionMessage(e), log_file = log_file)
         NA_integer_
-      },
-      warning = function(w) {
-        log_msg("WARN  ", url, " :: ", conditionMessage(w), log_file = log_file)
-        invokeRestart("muffleWarning")
       }
     )
 
