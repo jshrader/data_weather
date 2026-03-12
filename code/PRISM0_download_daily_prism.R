@@ -62,7 +62,9 @@ download_with_retry <- function(url, destfile, cfg, log_file) {
         ),
         warning = function(w) {
           log_msg("WARN  ", url, " :: ", conditionMessage(w), log_file = log_file)
-          invokeRestart("muffleWarning")
+          if (!is.null(findRestart("muffleWarning"))) {
+            invokeRestart("muffleWarning")
+          }
         }
       ),
       error = function(e) {
