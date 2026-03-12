@@ -16,6 +16,10 @@ config <- list(
   format       = NULL,                # NULL for COG default, or "nc", "asc", "bil"
   dataset_type = NULL,                # use "lt" for 800m monthly LT; not used for daily
   sleep_sec    = 1,
+  download_method = "libcurl",        # "libcurl" recommended on servers
+  max_retries  = 5,                   # number of retry attempts per file
+  backoff_base = 2,                   # base seconds for exponential backoff
+  backoff_max  = 60,                  # max sleep between retries
   skip_existing = TRUE,
   data_root    = Sys.getenv("PRISM_DATA_ROOT", unset = NA)
 )
@@ -43,6 +47,48 @@ log_msg <- function(..., log_file) {
   cat(ts, msg, "\n", file = log_file, append = TRUE)
 }
 
+download_with_retry <- function(url, destfile, cfg, log_file) {
+  attempt <- 0
+  repeat {
+    attempt <- attempt + 1
+    status <- tryCatch(
+      download.file(
+        url,
+        destfile = destfile,
+        mode = "wb",
+        quiet = TRUE,
+        method = cfg$download_method
+      ),
+      error = function(e) {
+        log_msg("ERROR ", url, " :: ", conditionMessage(e), log_file = log_file)
+        NA_integer_
+      },
+      warning = function(w) {
+        log_msg("WARN  ", url, " :: ", conditionMessage(w), log_file = log_file)
+        invokeRestart("muffleWarning")
+      }
+    )
+
+    if (!is.na(status) && status == 0) {
+      return(TRUE)
+    }
+
+    if (attempt >= cfg$max_retries) {
+      log_msg("FAIL  ", url, " after ", attempt, " attempts", log_file = log_file)
+      return(FALSE)
+    }
+
+    backoff <- min(cfg$backoff_max, cfg$backoff_base * 2^(attempt - 1))
+    jitter <- runif(1, min = 0, max = 0.5 * backoff)
+    sleep_for <- backoff + jitter
+    log_msg(
+      "RETRY ", url, " attempt ", attempt + 1,
+      " in ", sprintf("%.1f", sleep_for), "s",
+      log_file = log_file
+    )
+    Sys.sleep(sleep_for)
+  }
+}
 build_url <- function(var, date, cfg) {
   if (!inherits(date, "Date")) {
     date <- as.Date(date)
@@ -126,14 +172,20 @@ options(timeout = 600)
 # Download loop
 # -----------------------------
 all_dates <- seq.Date(config$start_date, config$end_date, by = "day")
+total_steps <- length(config$variables) * length(all_dates)
+step_idx <- 0
+pb <- txtProgressBar(min = 0, max = total_steps, style = 3)
 
 for (var in config$variables) {
+  print(paste0("Running code for ", var))
   out_dir <- file.path(config$data_root, "prism_daily", var, "zip")
   if (!dir.exists(out_dir)) {
     dir.create(out_dir, recursive = TRUE)
   }
 
   for (d in all_dates) {
+    step_idx <- step_idx + 1
+    setTxtProgressBar(pb, step_idx)
     url <- build_url(var, d, config)
     fname <- build_filename(var, d, config)
     destfile <- file.path(out_dir, fname)
@@ -145,13 +197,7 @@ for (var in config$variables) {
 
     log_msg("GET ", url, " -> ", destfile, log_file = log_file)
 
-    ok <- tryCatch({
-      download.file(url, destfile = destfile, mode = "wb", quiet = TRUE)
-      TRUE
-    }, error = function(e) {
-      log_msg("ERROR ", url, " :: ", conditionMessage(e), log_file = log_file)
-      FALSE
-    })
+    ok <- download_with_retry(url, destfile, config, log_file)
 
     if (!ok && file.exists(destfile)) {
       file.remove(destfile)
@@ -160,5 +206,7 @@ for (var in config$variables) {
     Sys.sleep(config$sleep_sec)
   }
 }
+
+close(pb)
 
 # EOF
