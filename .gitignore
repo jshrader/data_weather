@@ -9,3 +9,8 @@
 Icon.#*
 spatial_weather/*
 code/log.txt
+.Rproj.user
+weather.Rproj
+*.log
+/code/log
+code/log/PRISM0_download_daily_prism.log
