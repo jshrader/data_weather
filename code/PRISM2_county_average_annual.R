@@ -6,7 +6,7 @@
 ##
 ## Jeff Shrader
 ## First: 2018-6-4
-## Latest: 2024-10-06
+## Latest: 2026-04-01
 
 ## Cites
 ## for gridded population data:
@@ -34,13 +34,35 @@ if(Sys.info()["nodename"]=="scrivener"){
 ## A total kludge, but as of 2021, rcpp is throwing a bunch of errors when I 
 # first load a raster. So I just need to load one raster here at the beginning, 
 # catch the error, then the later rasters will load without problem. 
-test <- raster(paste0(datadrive_dir,"kludge/PRISM_ppt_stable_4kmD2_19810101_bil.bil"))
+tmp_dir <- paste0(datadrive_dir,"metadata/tmp")
+if (!dir.exists(tmp_dir)) {
+  dir.create(tmp_dir, recursive = TRUE)
+}
+sample_zip <- list.files(paste0(datadrive_dir,"ppt/zip/"), pattern="\\.zip$", full.names=TRUE)
+if (length(sample_zip) == 0) {
+  stop("No PRISM zip files found in ", paste0(datadrive_dir,"ppt/zip/"))
+}
+unzip(sample_zip[1], exdir = tmp_dir)
+sample_raster <- list.files(tmp_dir, pattern="ppt.*\\.(tif|bil)$", full.names=TRUE, ignore.case=TRUE)
+if (length(sample_raster) == 0) {
+  stop("No PRISM raster found in ", tmp_dir, " after unzip")
+}
+test <- raster(sample_raster[1])
 test2 <- as.data.table(as.data.frame(test,xy=TRUE))
 rm(test)
 rm(test2)
 
 ## Save spline basis for predictions
-weather <- raster(paste0(datadrive_dir,"metadata/tmp/PRISM_tmax_stable_4kmD2_20000101_bil.bil"))
+sample_zip_tmax <- list.files(paste0(datadrive_dir,"tmax/zip/"), pattern="\\.zip$", full.names=TRUE)
+if (length(sample_zip_tmax) == 0) {
+  stop("No PRISM tmax zip files found in ", paste0(datadrive_dir,"tmax/zip/"))
+}
+unzip(sample_zip_tmax[1], exdir = tmp_dir)
+sample_tmax <- list.files(tmp_dir, pattern="tmax.*\\.(tif|bil)$", full.names=TRUE, ignore.case=TRUE)
+if (length(sample_tmax) == 0) {
+  stop("No PRISM tmax raster found in ", tmp_dir, " after unzip")
+}
+weather <- raster(sample_tmax[1])
 wp <- as.data.frame(weather, xy=TRUE)
 k <- c(0,15,30)
 # WARNING: This spline call must match the one later in the code exactly!!!
@@ -114,7 +136,7 @@ func <- function(file_name,w,y){
   } else if(w == "ppt"){
     # NOAA defines chance of precip based on chance of >0.1 inches or 2.54 mm
     # https://psl.noaa.gov/data/usclimate/glossary.html
-    weather_with_county[, ppt_bin:=if_else(ppt>2.54,1,0)]
+    weather_with_county[, ppt_bin:=ifelse(ppt>2.54,1,0)]
     weather_with_county[, ppt_p2:=ppt^2]
   }
 
@@ -142,11 +164,11 @@ func <- function(file_name,w,y){
 # Loop through all weather variables and years, producing annual .rds files that can be merged
 # as needed for your project.
 # "tmp","ppt","vpdmax","vpdmin"
-for(w in c("tmp")){
+for(w in c("ppt")){
   tic(w)
   # Earliest start is 1981 in full data (unless we download older files) and 
   # for shared data the range is 2017 to 2018
-  for(y in 1990:2021){
+  for(y in 1981:2025){
     if(w == "tmp"){
       ws <- c("tmax")
     } else {
@@ -162,7 +184,7 @@ for(w in c("tmp")){
       setwd(paste0(datadrive_dir,"tmin","/zip"))
       system(paste0("cd ",getwd(), " && unzip -o '*_",y,"*.zip' -d ../../hold"),ignore.stdout=TRUE)
     }
-    files_all <- list.files(path=paste0(datadrive_dir,"hold"),pattern=paste0(ws,".*bil$"),full.names=TRUE)
+    files_all <- list.files(path=paste0(datadrive_dir,"hold"),pattern=paste0(ws,".*\\.(tif|bil)$"),full.names=TRUE, ignore.case=TRUE)
     #files_all <- files_all[1:10]
     setattr(files_all, "names", basename(files_all))
     tic(y)

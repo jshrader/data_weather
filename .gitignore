@@ -14,3 +14,5 @@ weather.Rproj
 *.log
 /code/log
 code/log/PRISM0_download_daily_prism.log
+/.venv_era5
+code/__pycache__/ERA1_download_era5_monthly_means.cpython-312.pyc

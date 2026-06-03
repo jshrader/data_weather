@@ -11,7 +11,7 @@ rm(list = ls())
 debug <- FALSE
 options(echo=TRUE)
 ptm_total <- proc.time()
-pacman::p_load(sp,rgeos,stringr,rgdal,raster,parallel,colorRamps,lubridate,
+pacman::p_load(sf,rgeos,stringr,raster,parallel,colorRamps,lubridate,
   data.table,tictoc,exactextractr)
 if(Sys.info()["nodename"]=="scrivener"){
   dir <- "/home/jgs/Dropbox/research/"
@@ -23,7 +23,7 @@ proj_dir <- paste0(dir,'projects/active/Weather_Forecasts_and_Mortality/Data/')
 
 ## Get the county polygons
 setwd(paste0(map_dir,"gz_2010_us_050_00_500k/"))
-county <- readOGR(dsn = ".", layer = "gz_2010_us_050_00_500k", encoding="latin1")
+county <- st_read(".")
 ## Keep only continental US
 county <- county[!(county$STATE %in% c("02","15")),]
 county <- county[!(county$STATE %in% as.character(seq(57,78))),]
@@ -37,15 +37,26 @@ county_fips[,GEO_ID:=NULL]
 county_fips[,NAME:=NULL]
 county_fips[,LSAD:=NULL]
 county_fips[,CENSUSAREA:=NULL]
-names(county_fips) <- c("state_fips","county_fips","ID")
+names(county_fips) <- c("state_fips","county_fips","geometry","ID")
 
 ## Baseline population data
 pop_temp <- raster(paste0(dir,"data/population_gridded_ciesin/usgrid_data_2010/uspop10.tif"))
-# Bring in representative weather file
-setwd(paste0(datadrive_dir,"tmax/zip/"))
-f <- "PRISM_tmax_stable_4kmD2_20000101_bil.zip"
-unzip(f,exdir="../../metadata/tmp")
-weather <- raster("../../metadata/tmp/PRISM_tmax_stable_4kmD2_20000101_bil.bil")
+# Bring in representative weather file (new PRISM naming + COG .tif)
+zip_dir <- paste0(datadrive_dir,"tmax/zip/")
+tmp_dir <- paste0(datadrive_dir,"metadata/tmp")
+if (!dir.exists(tmp_dir)) {
+  dir.create(tmp_dir, recursive = TRUE)
+}
+zips <- list.files(zip_dir, pattern="\\.zip$", full.names=TRUE)
+if (length(zips) == 0) {
+  stop("No PRISM zip files found in ", zip_dir)
+}
+unzip(zips[1], exdir = tmp_dir)
+rasters <- list.files(tmp_dir, pattern="tmax.*\\.(tif|bil)$", full.names=TRUE, ignore.case=TRUE)
+if (length(rasters) == 0) {
+  stop("No PRISM raster found in ", tmp_dir, " after unzip")
+}
+weather <- raster(rasters[1])
 crs <- crs(weather)
 # pop1 <- projectRaster(pop_temp,crs=crs,res=res(weather),method="bilinear")
 pop0 <- projectRaster(pop_temp,crs=crs)
@@ -76,11 +87,13 @@ if(debug==TRUE){
 
 ## Save the two files recording population and county membership of each
 ## grid point
+## We can drop geometry
+cell_member_county[, geometry:=NULL]
 saveRDS(cell_member_county,paste0(datadrive_dir,'prism_grid_to_county.rds'))
 #saveRDS(den,paste0(datadrive_dir,'prism_grid_population.rds'))
 
 # Clean up
 # Delete the temporary weather file used for reference grid
 setwd(paste0(datadrive_dir,"ppt/zip/"))
-unlink("../tmp",recursive=TRUE)
+unlink("../metadata/tmp",recursive=TRUE)
 # EOF
